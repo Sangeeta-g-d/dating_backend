@@ -21,7 +21,9 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('auth/',include('auth_api.urls'))
+    path('',include('admin_part.urls')),
+    path('auth/',include('auth_api.urls')),
+    path('swipes/',include('swipe_feature.urls'))
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'auth_api',
     'rest_framework',
     'rest_framework_simplejwt',
+    'admin_part',
+    'swipe_feature',
 ]
 
 AUTH_USER_MODEL = 'auth_api.CustomUser'

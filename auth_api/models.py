@@ -2,10 +2,11 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.utils import timezone
 import random
+from datetime import date
 from datetime import timedelta
-from django.utils import timezone
 from django.conf import settings
-
+from admin_part.models import Interest
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 
 # Custom User Manager
 class CustomUserManager(BaseUserManager):
@@ -44,14 +45,39 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
 
+    # Daily swipe tracking
+    swipes_today = models.PositiveIntegerField(default=0)
+    last_swipe_reset = models.DateField(default=timezone.now)
+
     objects = CustomUserManager()
 
-    USERNAME_FIELD = "email"   # login with email
-    REQUIRED_FIELDS = []       # you can add ["phone_number"] if you want
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = []
 
     def __str__(self):
         return self.email
 
+    # ----- SWIPE LIMIT METHODS -----
+    def can_swipe(self):
+        """Check if user can swipe today"""
+        # Reset daily swipes if day changed
+        if self.last_swipe_reset != date.today():
+            self.swipes_today = 0
+            self.last_swipe_reset = date.today()
+            self.save(update_fields=['swipes_today', 'last_swipe_reset'])
+
+        # Unlimited swipes for premium users
+        if hasattr(self, 'subscription') and self.subscription.plan and self.subscription.plan.swipe_limit is None:
+            return True
+
+        # Limited swipes
+        limit = self.subscription.plan.swipe_limit if hasattr(self, 'subscription') and self.subscription.plan else 10
+        return self.swipes_today < limit
+
+    def increment_swipes(self):
+        """Increment swipe count after a swipe"""
+        self.swipes_today += 1
+        self.save(update_fields=['swipes_today'])
 
 class EmailOTP(models.Model):
     email = models.EmailField()
@@ -65,3 +91,26 @@ class EmailOTP(models.Model):
     @staticmethod
     def generate_otp():
         return str(random.randint(100000, 999999))
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="profile")
+    bio = models.TextField(blank=True, null=True)
+    gender = models.CharField(max_length=20, choices=[("male", "Male"), ("female", "Female"), ("other", "Other")])
+    date_of_birth = models.DateField(blank=True, null=True)
+    interests = models.ManyToManyField(Interest, related_name="users", blank=True)
+    latitude = models.FloatField(blank=True, null=True)
+    longitude = models.FloatField(blank=True, null=True)
+    last_active = models.DateTimeField(default=timezone.now)
+    is_online = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.user.full_name}'s Profile"
+    
+
+
+class Photo(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="photos")
+    image = models.ImageField(upload_to="user_photos/")
+    is_profile = models.BooleanField(default=False)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
