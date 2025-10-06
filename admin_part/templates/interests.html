@@ -1,0 +1,202 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-inner">
+
+  <!-- Header -->
+  <div class="d-flex align-items-left align-items-md-center flex-column flex-md-row pt-2 pb-4">
+    <div>
+      <h3 class="fw-bold mb-3">Interests</h3>
+    </div>
+    <div class="ms-md-auto py-2 py-md-0">
+      <a href="#" class="btn btn-primary btn-round" data-bs-toggle="modal" data-bs-target="#addInterestModal">
+        <i class="fas fa-plus me-2"></i>Add Interest
+      </a>
+    </div>
+  </div>
+
+  <!-- Interests Grid -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <div class="row">
+        {% for interest in interests %}
+        <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
+          <div class="card border-0 shadow-sm rounded-3 interest-card position-relative h-100">
+            <div class="card-body d-flex align-items-center justify-content-center flex-column py-4">
+              <h5 class="fw-semibold text-primary mb-2">{{ interest.name }}</h5>
+            </div>
+
+            <!-- Delete Icon -->
+            <button class="btn btn-icon btn-round btn-info position-absolute top-0 end-0 m-2 text-danger border-0 delete-interest-btn"
+                    data-id="{{ interest.id }}" title="Delete">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-center text-muted mt-3">No interests added yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Interest Modal -->
+<div class="modal fade" id="addInterestModal" tabindex="-1" aria-labelledby="addInterestModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <form id="addInterestForm">
+        <div class="modal-header bg-primary text-white rounded-top-4">
+          <h5 class="modal-title" id="addInterestModalLabel"><i class="fas fa-star me-2"></i>Add New Interest</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group mb-3">
+            <label for="interestName" class="form-label fw-semibold">Interest Name</label>
+            <input type="text" class="form-control" id="interestName" name="name" placeholder="Enter interest name" required>
+          </div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Interest</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Toastify -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+
+<style>
+  .interest-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .interest-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  }
+  .delete-interest-btn {
+    opacity: 0.8;
+    transition: opacity 0.2s ease;
+  }
+  .delete-interest-btn:hover {
+    opacity: 1;
+  }
+</style>
+
+<script>
+  // CSRF helper
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Add Interest
+  document.getElementById("addInterestForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    formData.append("action", "add");
+
+    try {
+      const response = await fetch("", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": getCookie("csrftoken"),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      Toastify({
+        text: data.message,
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: data.status === "success" ? "#198754" : "#dc3545",
+        close: true,
+      }).showToast();
+
+      if (data.status === "success") {
+        this.reset();
+        const modal = bootstrap.Modal.getInstance(document.getElementById("addInterestModal"));
+        modal.hide();
+        setTimeout(() => location.reload(), 800);
+      }
+
+    } catch (error) {
+      Toastify({
+        text: "Something went wrong. Please try again.",
+        duration: 3000,
+        gravity: "top",
+        position: "right",
+        backgroundColor: "#dc3545",
+        close: true,
+      }).showToast();
+    }
+  });
+
+  // Delete Interest
+  document.querySelectorAll(".delete-interest-btn").forEach(btn => {
+    btn.addEventListener("click", async function () {
+      const id = this.getAttribute("data-id");
+
+      if (!confirm("Are you sure you want to delete this interest?")) return;
+
+      const formData = new FormData();
+      formData.append("action", "delete");
+      formData.append("id", id);
+
+      try {
+        const response = await fetch("", {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": getCookie("csrftoken"),
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        Toastify({
+          text: data.message,
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: data.status === "success" ? "#198754" : "#dc3545",
+          close: true,
+        }).showToast();
+
+        if (data.status === "success") {
+          setTimeout(() => location.reload(), 800);
+        }
+
+      } catch (error) {
+        Toastify({
+          text: "Failed to delete interest.",
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          backgroundColor: "#dc3545",
+          close: true,
+        }).showToast();
+      }
+    });
+  });
+</script>
+{% endblock %}

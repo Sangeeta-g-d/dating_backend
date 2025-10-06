@@ -108,9 +108,3 @@ class UserProfile(models.Model):
         return f"{self.user.full_name}'s Profile"
     
 
-
-class Photo(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="photos")
-    image = models.ImageField(upload_to="user_photos/")
-    is_profile = models.BooleanField(default=False)
-    uploaded_at = models.DateTimeField(auto_now_add=True)

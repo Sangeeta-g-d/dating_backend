@@ -1,0 +1,79 @@
+      /* Background styling */
+      body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Poppins", sans-serif;
+      }
+
+      /* Login card */
+      .login-card {
+        background-color: #fff;
+        border-radius: 20px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        width: 100%;
+        max-width: 380px;
+        padding: 2rem;
+        text-align: center;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      .login-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
+      }
+
+      /* Header text */
+      .login-card h1 {
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #343a40;
+      }
+
+      /* Floating labels */
+      .form-floating > .form-control {
+        border-radius: 10px;
+      }
+
+      .form-control:focus {
+        border-color: #6610f2;
+        box-shadow: 0 0 0 0.2rem rgba(102, 16, 242, 0.25);
+      }
+
+      /* Button */
+      .btn-primary {
+        background-color: #6610f2;
+        border: none;
+        border-radius: 10px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+      }
+
+      .btn-primary:hover {
+        background-color: #520dc2;
+        transform: scale(1.02);
+      }
+
+      /* Checkbox */
+      .form-check-label {
+        color: #6c757d;
+      }
+
+      /* Footer */
+      .login-footer {
+        font-size: 0.9rem;
+        color: #adb5bd;
+        margin-top: 1rem;
+      }
+
+      /* Subtle fade animation */
+      .fade-in {
+        animation: fadeIn 0.8s ease forwards;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+  

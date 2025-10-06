@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
-
+from django.utils import timezone       # for timezone.now()
+from datetime import timedelta, date   
 # Create your models here.
 
 User = settings.AUTH_USER_MODEL
@@ -9,8 +10,6 @@ User = settings.AUTH_USER_MODEL
 
 class Interest(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    icon = models.CharField(max_length=100, blank=True, null=True)  # optional UI icon
-
     def __str__(self):
         return self.name
     
