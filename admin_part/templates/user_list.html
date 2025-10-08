@@ -1,0 +1,73 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-inner">
+  <!-- Header -->
+  <div class="d-flex align-items-left align-items-md-center flex-column flex-md-row pt-2 pb-4">
+    <div>
+      <h3 class="fw-bold mb-3">User List</h3>
+    </div>
+  </div>
+
+  <!-- Users Table -->
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table id="user-table" class="display table table-striped table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Profile Photo</th>
+              <th>Full Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>City</th>
+              <th>Swipes Today</th>
+              <th>Joined On</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+            <tr>
+              <td>{{ user.id }}</td>
+              <td>
+                {% if user.profile_photo %}
+                  <img src="{{ user.profile_photo.url }}" alt="Profile" class="rounded-circle" width="40" height="40">
+                {% else %}
+                  <img src="{% static 'images/default-avatar.png' %}" alt="Default" class="rounded-circle" width="40" height="40">
+                {% endif %}
+              </td>
+              <td>{{ user.full_name }}</td>
+              <td>{{ user.email }}</td>
+              <td>{{ user.phone_number|default:"—" }}</td>
+              <td>{{ user.city|default:"—" }}</td>
+              <td>{{ user.swipes_today }}</td>
+              <td>{{ user.date_joined|date:"d M Y" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ DataTables CSS + JS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+  $(document).ready(function () {
+    $('#user-table').DataTable({
+      "pageLength": 10,
+      "lengthMenu": [5, 10, 25, 50, 100],
+      "order": [[7, "desc"]],
+      "columnDefs": [
+        { "orderable": false, "targets": [1] }  // Disable sorting for profile image
+      ]
+    });
+  });
+</script>
+{% endblock %}

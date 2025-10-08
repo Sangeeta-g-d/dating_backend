@@ -86,6 +86,18 @@
       <p>Interests</p>
     </a>
   </li>
+  <li class="nav-item {% if request.path == '/subscription_plans/' %}active{% endif %}">
+    <a href="/subscription_plans/">
+      <i class="fas fa-file"></i>
+      <p>Subscription Plans</p>
+    </a>
+  </li>
+  <li class="nav-item {% if request.path == '/user_list/' %}active{% endif %}">
+    <a href="/user_list/">
+      <i class="fas fa-file"></i>
+      <p>User List</p>
+    </a>
+  </li>
 </ul>
           </div>
         </div>

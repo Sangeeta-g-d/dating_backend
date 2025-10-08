@@ -1,7 +1,9 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect,get_object_or_404
 from django.contrib.auth import authenticate, login,logout
 from django.http import JsonResponse
 from .models import *
+from django.views.decorators.csrf import csrf_exempt
+from auth_api.models import CustomUser
 # Create your views here.
 
 def admin_dashboard(request):
@@ -98,6 +100,47 @@ def add_subscription_plan(request):
 
     return render(request, "add_subscription_plan.html")
 
+def subscription_plans(request):
+    plans = SubscriptionPlan.objects.all().order_by('price')
+    return render(request, "subscription_plans.html", {"plans": plans})
+
+
+def edit_subscription_plan(request, plan_id):
+    plan = get_object_or_404(SubscriptionPlan, id=plan_id)
+
+    if request.method == "POST":
+        try:
+            plan.name = request.POST.get("name", "").strip()
+            plan.plan_type = request.POST.get("plan_type")
+            plan.price = request.POST.get("price", 0)
+            plan.duration_days = request.POST.get("duration_days", 0)
+            plan.swipe_limit = request.POST.get("swipe_limit") or None
+            plan.features = request.POST.getlist("features[]")
+            plan.is_active = request.POST.get("is_active") == "true"
+            plan.save()
+
+            return JsonResponse({"status": "success", "message": "Subscription plan updated successfully!"})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)})
+
+    return render(request, "edit_subscription_plan.html", {"plan": plan})
+
+@csrf_exempt
+def delete_subscription_plan(request, pk):
+    if request.method == "DELETE":
+        try:
+            plan = SubscriptionPlan.objects.get(pk=pk)
+            plan.delete()
+            return JsonResponse({"status": "success", "message": "Plan deleted successfully!"})
+        except SubscriptionPlan.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Plan not found."})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)})
+    return JsonResponse({"status": "error", "message": "Invalid request method."})
+
+def user_list(request):
+    users = CustomUser.objects.all().order_by('-date_joined').exclude(is_superuser=True)
+    return render(request, 'user_list.html', {'users': users})
 
 def logout_view(request):
     logout(request)

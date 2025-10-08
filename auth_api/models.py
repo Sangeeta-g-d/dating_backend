@@ -94,10 +94,61 @@ class EmailOTP(models.Model):
 
 
 class UserProfile(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="profile")
+    GENDER_CHOICES = [
+        ("male", "Male"),
+        ("female", "Female"),
+        ("other", "Other"),
+    ]
+
+    MEET_PREFERENCE_CHOICES = [
+        ("male", "Male"),
+        ("female", "Female"),
+        ("everyone", "Everyone"),
+    ]
+
+    MARITAL_STATUS_CHOICES = [
+        ("single", "Single"),
+        ("divorced", "Divorced"),
+        ("widowed", "Widowed"),
+        ("in_a_relationship", "In a Relationship"),
+    ]
+
+    RELIGION_CHOICES = [
+        ("hindu", "Hindu"),
+        ("muslim", "Muslim"),
+        ("christian", "Christian"),
+        ("sikh", "Sikh"),
+        ("buddhist", "Buddhist"),
+        ("jain", "Jain"),
+        ("other", "Other"),
+    ]
+
+    LOOKING_FOR_CHOICES = [
+        ("friendship", "Friendship"),
+        ("casual_dating", "Casual Dating"),
+        ("serious_relationship", "Serious Relationship"),
+        ("marriage", "Marriage"),
+        ("networking", "Networking"),
+    ]
+
+    user = models.OneToOneField("CustomUser", on_delete=models.CASCADE, related_name="profile")
     bio = models.TextField(blank=True, null=True)
-    gender = models.CharField(max_length=20, choices=[("male", "Male"), ("female", "Female"), ("other", "Other")])
+    gender = models.CharField(max_length=20, choices=GENDER_CHOICES)
+    would_like_to_meet = models.CharField(
+        max_length=20, choices=MEET_PREFERENCE_CHOICES, default="everyone"
+    )
+
     date_of_birth = models.DateField(blank=True, null=True)
+    height = models.DecimalField(max_digits=4, decimal_places=1, blank=True, null=True, help_text="Height in cm")
+    marital_status = models.CharField(
+        max_length=20, choices=MARITAL_STATUS_CHOICES, blank=True, null=True
+    )
+    mother_tongue = models.CharField(max_length=50, blank=True, null=True)
+    religion = models.CharField(max_length=50, choices=RELIGION_CHOICES, blank=True, null=True)
+
+    occupation = models.CharField(max_length=100, blank=True, null=True)
+    looking_for = models.CharField(max_length=30, choices=LOOKING_FOR_CHOICES, blank=True, null=True)
+
     interests = models.ManyToManyField(Interest, related_name="users", blank=True)
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)

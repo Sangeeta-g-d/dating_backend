@@ -4,40 +4,40 @@
 <div class="page-inner py-4">
   <div class="card border-0 shadow-lg rounded-4">
     <div class="card-header bg-gradient-primary text-white d-flex align-items-center">
-      <i class="fas fa-crown fa-lg me-2"></i>
-      <h4 class="mb-0">Add Subscription Plan</h4>
+      <i class="fas fa-edit fa-lg me-2"></i>
+      <h4 class="mb-0">Edit Subscription Plan</h4>
     </div>
 
     <div class="card-body px-4 py-4">
-      <form id="subscriptionPlanForm">
+      <form id="editSubscriptionPlanForm">
         <div class="row g-4">
           <!-- Left Column -->
           <div class="col-md-6">
             <!-- Plan Name -->
             <div class="form-group mb-3">
               <label for="planName" class="form-label fw-semibold">Plan Name</label>
-              <input type="text" class="form-control shadow-sm" id="planName" name="name" placeholder="Enter plan name" required>
+              <input type="text" class="form-control shadow-sm" id="planName" name="name" value="{{ plan.name }}" required>
             </div>
 
             <!-- Plan Type -->
             <div class="form-group mb-3">
               <label for="planType" class="form-label fw-semibold">Plan Type</label>
               <select class="form-select shadow-sm" id="planType" name="plan_type" required>
-                <option value="free">Free</option>
-                <option value="premium">Premium</option>
+                <option value="free" {% if plan.plan_type == "free" %}selected{% endif %}>Free</option>
+                <option value="premium" {% if plan.plan_type == "premium" %}selected{% endif %}>Premium</option>
               </select>
             </div>
 
             <!-- Price -->
             <div class="form-group mb-3">
               <label for="price" class="form-label fw-semibold">Price (₹)</label>
-              <input type="number" class="form-control shadow-sm" id="price" name="price" min="0" step="0.01" value="0">
+              <input type="number" class="form-control shadow-sm" id="price" name="price" min="0" step="0.01" value="{{ plan.price }}">
             </div>
 
             <!-- Duration -->
             <div class="form-group mb-3">
               <label for="durationDays" class="form-label fw-semibold">Duration (Days)</label>
-              <input type="number" class="form-control shadow-sm" id="durationDays" name="duration_days" min="1" value="30" required>
+              <input type="number" class="form-control shadow-sm" id="durationDays" name="duration_days" min="1" value="{{ plan.duration_days }}" required>
             </div>
           </div>
 
@@ -45,20 +45,32 @@
           <div class="col-md-6">
             <!-- Swipe Limit -->
             <div class="form-group mb-3">
-              <label for="swipeLimit" class="form-label fw-semibold">Daily Swipe Limit <small class="text-muted">(Leave empty for unlimited)</small></label>
-              <input type="number" class="form-control shadow-sm" id="swipeLimit" name="swipe_limit" min="1" placeholder="Unlimited if empty">
+              <label for="swipeLimit" class="form-label fw-semibold">Daily Swipe Limit 
+                <small class="text-muted">(Leave empty for unlimited)</small>
+              </label>
+              <input type="number" class="form-control shadow-sm" id="swipeLimit" name="swipe_limit" value="{{ plan.swipe_limit|default:'' }}">
             </div>
 
             <!-- Features -->
             <div class="form-group mb-3">
               <label class="form-label fw-semibold">Features</label>
               <div id="featuresWrapper" class="rounded border p-3 bg-light-subtle">
+                {% for feature in plan.features %}
+                <div class="input-group mb-2 feature-item">
+                  <input type="text" class="form-control" name="features[]" value="{{ feature }}" required>
+                  <button type="button" class="btn btn-outline-danger btn-remove-feature">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+                {% endfor %}
+                {% if not plan.features %}
                 <div class="input-group mb-2 feature-item">
                   <input type="text" class="form-control" name="features[]" placeholder="Enter feature" required>
                   <button type="button" class="btn btn-outline-danger btn-remove-feature">
                     <i class="fas fa-trash"></i>
                   </button>
                 </div>
+                {% endif %}
               </div>
               <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="addFeatureBtn">
                 <i class="fas fa-plus me-1"></i>Add Feature
@@ -67,7 +79,7 @@
 
             <!-- Active Toggle -->
             <div class="form-check form-switch mt-4">
-              <input class="form-check-input" type="checkbox" id="isActive" name="is_active" checked>
+              <input class="form-check-input" type="checkbox" id="isActive" name="is_active" {% if plan.is_active %}checked{% endif %}>
               <label class="form-check-label fw-semibold" for="isActive">Active</label>
             </div>
           </div>
@@ -75,7 +87,7 @@
 
         <div class="text-center mt-4">
           <button type="submit" class="btn btn-primary px-5 py-2 rounded-pill shadow-sm">
-            <i class="fas fa-save me-2"></i>Save Plan
+            <i class="fas fa-save me-2"></i>Update Plan
           </button>
         </div>
       </form>
@@ -147,7 +159,7 @@
   });
 
   // Handle form submission via AJAX
-  document.getElementById("subscriptionPlanForm").addEventListener("submit", async function(e){
+  document.getElementById("editSubscriptionPlanForm").addEventListener("submit", async function(e){
     e.preventDefault();
     const formData = new FormData(this);
 
@@ -173,12 +185,9 @@
       }).showToast();
 
       if(data.status === "success"){
-        this.reset();
-        document.getElementById("featuresWrapper").innerHTML = `
-          <div class="input-group mb-2 feature-item">
-            <input type="text" class="form-control" name="features[]" placeholder="Enter feature" required>
-            <button type="button" class="btn btn-outline-danger btn-remove-feature"><i class="fas fa-trash"></i></button>
-          </div>`;
+        setTimeout(() => {
+          window.location.href = "/subscription_plans/";
+        }, 1200);
       }
     }catch(err){
       Toastify({

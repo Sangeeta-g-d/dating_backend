@@ -5,9 +5,14 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import *
 from . models import *
 from django.core.mail import send_mail
+from rest_framework.permissions import IsAuthenticated,AllowAny  
+from rest_framework.parsers import MultiPartParser, FormParser
+
 
 # user registration View
 class UserRegistrationAPIView(APIView):
+    parser_classes = [MultiPartParser, FormParser]  # ✅ handle image uploads
+
     def post(self, request):
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
@@ -38,11 +43,8 @@ class UserRegistrationAPIView(APIView):
                 status=status.HTTP_201_CREATED,
             )
         return Response(
-            {
-                "status": status.HTTP_400_BAD_REQUEST,
-                "errors": serializer.errors
-            },
-            status=status.HTTP_400_BAD_REQUEST
+            {"status": status.HTTP_400_BAD_REQUEST, "errors": serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
 
@@ -169,3 +171,47 @@ class VerifyOTPAPIView(APIView):
             )
 
         return Response({"status": 400, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+# interest list
+class InterestListAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        interests = Interest.objects.all().order_by('name')
+        serializer = InterestSerializer(interests, many=True)
+        return Response(
+            {
+                "status": status.HTTP_200_OK,
+                "message": "Interests fetched successfully",
+                "response": serializer.data,
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+# add user details
+class UserProfileAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = UserProfileSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            profile = serializer.save()
+            return Response(
+                {
+                    "status": status.HTTP_201_CREATED,
+                    "message": "Profile added/updated successfully",
+                    "response": UserProfileSerializer(profile).data
+                },
+                status=status.HTTP_201_CREATED
+            )
+
+        return Response(
+            {
+                "status": status.HTTP_400_BAD_REQUEST,
+                "message": "Invalid data provided",
+                "response": serializer.errors,
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )

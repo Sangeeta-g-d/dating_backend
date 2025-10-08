@@ -1,7 +1,7 @@
 from rest_framework import serializers
-from .models import CustomUser
+from .models import *
 from django.contrib.auth import authenticate
-
+from admin_part.models import Interest
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
@@ -44,3 +44,45 @@ class SendOTPSerializer(serializers.Serializer):
 class VerifyOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.CharField(max_length=6)
+
+# fetch interests
+class InterestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Interest
+        fields = ['id', 'name']
+
+
+# post user details
+class UserProfileSerializer(serializers.ModelSerializer):
+    interests = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Interest.objects.all(), required=False
+    )
+
+    class Meta:
+        model = UserProfile
+        fields = [
+            'bio',
+            'gender',
+            'would_like_to_meet',
+            'date_of_birth',
+            'height',
+            'marital_status',
+            'mother_tongue',
+            'religion',
+            'occupation',
+            'looking_for',
+            'interests',
+            'latitude',
+            'longitude',
+        ]
+
+    def create(self, validated_data):
+        interests = validated_data.pop('interests', [])
+        user = self.context['request'].user
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        for attr, value in validated_data.items():
+            setattr(profile, attr, value)
+        profile.save()
+        if interests:
+            profile.interests.set(interests)
+        return profile
