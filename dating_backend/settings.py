@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'admin_part',
     'swipe_feature',
+    'feed'
 ]
 
 AUTH_USER_MODEL = 'auth_api.CustomUser'
