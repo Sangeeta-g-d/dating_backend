@@ -7,12 +7,19 @@ For more information on this file, see
 https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
 """
 import os
-from django.core.asgi import get_asgi_application  # ✅ import this
+import django
+from django.core.asgi import get_asgi_application
+
+# Set the default Django settings module
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dating_backend.settings')
+
+# Configure Django BEFORE importing any modules that might use settings
+django.setup()
+
+# Now import the routing modules (they will have access to configured settings)
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
-import chat.routing  # replace with your routing module
-
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dating_backend.settings')
+import chat.routing
 
 # Standard Django ASGI application
 django_asgi_app = get_asgi_application()

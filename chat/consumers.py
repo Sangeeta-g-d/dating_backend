@@ -1,12 +1,6 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
-from django.contrib.auth import get_user_model
-from .models import ChatRoom, Message
 from asgiref.sync import sync_to_async
-from pyfcm import FCMNotification
-from django.conf import settings
-
-User = get_user_model()
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -29,6 +23,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     # Receive message from WebSocket
     async def receive(self, text_data):
+        # Import inside method to avoid circular imports
+        from django.contrib.auth import get_user_model
+        from .models import ChatRoom, Message
+        from django.conf import settings
+        
+        User = get_user_model()
+        
         data = json.loads(text_data)
         message = data.get("message")
         sender_id = data.get("sender_id")
@@ -56,13 +57,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps(event))
 
     def send_push_notification(self, room, sender, message):
+        # Import inside method to avoid circular imports
+        from pyfcm import FCMNotification
+        from django.conf import settings
+        
         # Send notification to other participants
         push_service = FCMNotification(api_key=settings.FCM_SERVER_KEY)
         recipients = room.participants.exclude(id=sender.id)
         for user in recipients:
-            if user.fcm_token:  # store FCM token in User model
+            if hasattr(user, 'fcm_token') and user.fcm_token:  # store FCM token in User model
                 push_service.notify_single_device(
                     registration_id=user.fcm_token,
-                    message_title=f"New message from {sender.full_name}",
+                    message_title=f"New message from {getattr(sender, 'full_name', sender.username)}",
                     message_body=message
                 )
