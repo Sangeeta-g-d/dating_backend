@@ -8,4 +8,5 @@ urlpatterns = [
     path("verify-otp/", VerifyOTPAPIView.as_view(), name="verify-otp"),
     path("fetch-interests/",InterestListAPIView.as_view(),name="fetch-interests"),
     path("add-user-details/",UserProfileAPIView.as_view(),name="user-details"),
+    path('update-fcm-token/', UpdateFCMTokenAPIView.as_view(), name='update_fcm_token'),
 ]

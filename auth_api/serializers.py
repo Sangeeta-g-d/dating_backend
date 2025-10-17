@@ -86,3 +86,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if interests:
             profile.interests.set(interests)
         return profile
+    
+
+class DeviceTokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeviceToken
+        fields = ['device_type', 'fcm_token']

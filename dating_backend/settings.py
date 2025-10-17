@@ -42,7 +42,9 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'admin_part',
     'swipe_feature',
-    'feed'
+    'feed',
+    'channels',
+    'chat'
 ]
 
 AUTH_USER_MODEL = 'auth_api.CustomUser'
@@ -128,6 +130,19 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+FIELD_ENCRYPTION_KEY = config('FIELD_ENCRYPTION_KEY')
+# Django Channels
+ASGI_APPLICATION = "dating_backend.asgi.application"
+
+# Redis for channel layer
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

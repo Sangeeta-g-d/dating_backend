@@ -7,6 +7,8 @@ from . models import *
 from django.core.mail import send_mail
 from rest_framework.permissions import IsAuthenticated,AllowAny  
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework import status, permissions
+
 
 
 # user registration View
@@ -212,6 +214,48 @@ class UserProfileAPIView(APIView):
                 "status": status.HTTP_400_BAD_REQUEST,
                 "message": "Invalid data provided",
                 "response": serializer.errors,
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+
+# fcm token
+class UpdateFCMTokenAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = DeviceTokenSerializer(data=request.data)
+        if serializer.is_valid():
+            device_type = serializer.validated_data['device_type']
+            fcm_token = serializer.validated_data['fcm_token']
+
+            # Update or create token for this user
+            device_obj, created = DeviceToken.objects.update_or_create(
+                user=request.user,
+                defaults={
+                    'device_type': device_type,
+                    'fcm_token': fcm_token
+                }
+            )
+
+            return Response(
+                {
+                    "status": status.HTTP_200_OK,
+                    "message": "FCM token created" if created else "FCM token updated",
+                    "data": {
+                        "user_id": request.user.id,
+                        "device_type": device_type,
+                        "fcm_token": fcm_token,
+                        "updated_at": device_obj.updated_at
+                    }
+                },
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            {
+                "status": status.HTTP_400_BAD_REQUEST,
+                "errors": serializer.errors
             },
             status=status.HTTP_400_BAD_REQUEST
         )

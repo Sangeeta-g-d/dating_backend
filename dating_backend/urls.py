@@ -25,6 +25,7 @@ urlpatterns = [
     path('auth/',include('auth_api.urls')),
     path('swipes/',include('swipe_feature.urls')),
     path('feeds/',include('feed.urls')),
+    path('chat/',include('chat.urls')),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

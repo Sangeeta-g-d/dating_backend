@@ -159,3 +159,21 @@ class UserProfile(models.Model):
         return f"{self.user.full_name}'s Profile"
     
 
+
+class DeviceToken(models.Model):
+    DEVICE_CHOICES = [
+        ("android", "Android"),
+        ("ios", "iOS"),
+    ]
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="device_tokens")
+    device_type = models.CharField(max_length=10, choices=DEVICE_CHOICES)
+    fcm_token = models.CharField(max_length=512)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("user", "fcm_token")  # prevents duplicates
+
+    def __str__(self):
+        return f"{self.user.email} - {self.device_type}"
