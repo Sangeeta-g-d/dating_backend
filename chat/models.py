@@ -50,18 +50,19 @@ class ChatRoom(models.Model):
         participants = ", ".join([p.email for p in self.participants.all()])
         return f"ChatRoom ({participants})"
 
-
 class Message(models.Model):
     room = models.ForeignKey('ChatRoom', on_delete=models.CASCADE, related_name="messages")
-    # Use string reference to avoid direct import
     sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     content_encrypted = models.TextField(blank=True, null=True)
     image = models.ImageField(upload_to="chat_images/", blank=True, null=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     is_seen = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)  # ✅ new field
 
     @property
     def content(self):
+        if self.is_deleted:
+            return "This message was deleted"
         if self.content_encrypted:
             return decrypt_text(self.content_encrypted)
         return ""
