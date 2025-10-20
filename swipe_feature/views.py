@@ -154,30 +154,28 @@ class ReceivedMatchRequestsAPIView(APIView):
                     "response": []
                 }, status=400)
 
-            # Fetch all pending requests received by this user
-            match_requests = MatchRequest.objects.filter(
+            # Fetch all users who liked the current user
+            received_swipes = Swipe.objects.filter(
                 to_user=user,
-                is_accepted=False,
-                is_rejected=False
+                is_liked=True
             ).select_related("from_user", "from_user__profile")
 
-            # If no requests found
-            if not match_requests.exists():
+            if not received_swipes.exists():
                 return Response({
                     "status": 404,
-                    "message": "No match requests found.",
+                    "message": "No users have liked you yet.",
                     "response": []
                 }, status=404)
 
             response_data = []
 
-            for req in match_requests:
-                from_user = req.from_user
+            for swipe in received_swipes:
+                from_user = swipe.from_user
                 profile = getattr(from_user, "profile", None)
                 if not profile:
                     continue  # skip users without profile
 
-                # Calculate age
+                # Calculate age if available
                 age = None
                 if profile.date_of_birth:
                     today = timezone.now().date()
@@ -192,29 +190,30 @@ class ReceivedMatchRequestsAPIView(APIView):
                 )
 
                 response_data.append({
-                    "request_id": req.id,
+                    "request_id": swipe.id,  # using swipe id as request_id
                     "user_id": from_user.id,
                     "full_name": from_user.full_name,
+                    "designation": getattr(profile, "designation", None),
                     "profile_photo": profile_photo_url,
                     "gender": profile.gender,
                     "occupation": profile.occupation,
                     "bio": profile.bio,
                     "age": age,
                     "interests": [i.name for i in profile.interests.all()],
+                    "created_at": swipe.created_at,
                 })
 
             # Success response
             return Response({
                 "status": 200,
-                "message": "Match requests fetched successfully.",
+                "message": "Users who liked you fetched successfully.",
                 "response": response_data
             }, status=200)
 
         except Exception as e:
-            # Handle any unexpected errors
             return Response({
                 "status": 500,
-                "message": f"An error occurred: {str(e)}",
+                "message": f"An unexpected error occurred: {str(e)}",
                 "response": []
             }, status=500)
 
