@@ -29,17 +29,26 @@ class SwipeUsersAPIView(APIView):
                 "response": []
             }, status=400)
 
+        # Get user's preferences
+        meet_preference = user_profile.would_like_to_meet
         user_interests = user_profile.interests.all()
 
-        # Filter users based on shared interests (excluding self)
+        # Filter base users (exclude self)
+        users_qs = User.objects.exclude(id=user.id)
+
+        # --- GENDER FILTER ---
+        if meet_preference != "everyone":
+            users_qs = users_qs.filter(profile__gender=meet_preference)
+
+        # --- INTEREST FILTER ---
         if user_interests.exists():
-            matched_users = User.objects.filter(
+            matched_users = users_qs.filter(
                 profile__interests__in=user_interests
-            ).exclude(id=user.id).distinct()
+            ).distinct()
         else:
             # If no interests, pick random users
-            all_other_users = User.objects.exclude(id=user.id)
-            matched_users = sample(list(all_other_users), min(len(all_other_users), 10))  # limit 10 random users
+            all_other_users = list(users_qs)
+            matched_users = sample(all_other_users, min(len(all_other_users), 10))
 
         response_data = []
 
@@ -126,6 +135,88 @@ class SwipeAPIView(APIView):
             "message": "You disliked the user.",
             "swipe": SwipeSerializer(swipe).data
         })
+
+
+# received match requests
+class ReceivedMatchRequestsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user
+
+            # Ensure user profile exists
+            user_profile = getattr(user, "profile", None)
+            if not user_profile:
+                return Response({
+                    "status": 400,
+                    "message": "User profile not found.",
+                    "response": []
+                }, status=400)
+
+            # Fetch all pending requests received by this user
+            match_requests = MatchRequest.objects.filter(
+                to_user=user,
+                is_accepted=False,
+                is_rejected=False
+            ).select_related("from_user", "from_user__profile")
+
+            # If no requests found
+            if not match_requests.exists():
+                return Response({
+                    "status": 404,
+                    "message": "No match requests found.",
+                    "response": []
+                }, status=404)
+
+            response_data = []
+
+            for req in match_requests:
+                from_user = req.from_user
+                profile = getattr(from_user, "profile", None)
+                if not profile:
+                    continue  # skip users without profile
+
+                # Calculate age
+                age = None
+                if profile.date_of_birth:
+                    today = timezone.now().date()
+                    age = today.year - profile.date_of_birth.year - (
+                        (today.month, today.day) < (profile.date_of_birth.month, profile.date_of_birth.day)
+                    )
+
+                # Profile photo URL
+                profile_photo_url = (
+                    request.build_absolute_uri(from_user.profile_photo.url)
+                    if from_user.profile_photo else None
+                )
+
+                response_data.append({
+                    "request_id": req.id,
+                    "user_id": from_user.id,
+                    "full_name": from_user.full_name,
+                    "profile_photo": profile_photo_url,
+                    "gender": profile.gender,
+                    "occupation": profile.occupation,
+                    "bio": profile.bio,
+                    "age": age,
+                    "interests": [i.name for i in profile.interests.all()],
+                })
+
+            # Success response
+            return Response({
+                "status": 200,
+                "message": "Match requests fetched successfully.",
+                "response": response_data
+            }, status=200)
+
+        except Exception as e:
+            # Handle any unexpected errors
+            return Response({
+                "status": 500,
+                "message": f"An error occurred: {str(e)}",
+                "response": []
+            }, status=500)
 
 
 # Accept/Reject Match Request API

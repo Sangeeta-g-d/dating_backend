@@ -6,6 +6,9 @@ urlpatterns = [
     path('swipe-users/', SwipeUsersAPIView.as_view(), name='swipe-users'),
     # Perform a swipe (like/dislike)
     path('swipe-action/', SwipeAPIView.as_view(), name='swipe-action'),
+
+    # received match request
+    path('match-requests/', ReceivedMatchRequestsAPIView.as_view(), name='match-requests-list'),
     # Accept or reject a match request
     path('match-request/<int:request_id>/', MatchRequestActionAPIView.as_view(), name='match-request-action'),
     # Get list of confirmed matches
