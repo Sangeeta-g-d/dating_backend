@@ -7,16 +7,25 @@ from datetime import timedelta
 from django.conf import settings
 from admin_part.models import Interest
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
-
 # Custom User Manager
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError("The Email field must be set")
         email = self.normalize_email(email)
+        
+        # Extract file fields before creating user
+        profile_photo = extra_fields.pop('profile_photo', None)
+        
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
+        
+        # Handle file fields AFTER the user is created
+        if profile_photo:
+            user.profile_photo = profile_photo
+            user.save(update_fields=['profile_photo'])
+            
         return user
 
     def create_superuser(self, email, password=None, **extra_fields):
@@ -29,7 +38,6 @@ class CustomUserManager(BaseUserManager):
             raise ValueError("Superuser must have is_superuser=True.")
 
         return self.create_user(email, password, **extra_fields)
-
 
 # Custom User Model
 class CustomUser(AbstractBaseUser, PermissionsMixin):
