@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Swipe, MatchRequest, Match
+from .models import Swipe, Match
 from django.contrib.auth import get_user_model
 from .serializers import *
 from django.utils import timezone
@@ -117,7 +117,6 @@ class SwipeAPIView(APIView):
             # Check if the other user also liked you
             if Swipe.objects.filter(from_user=to_user, to_user=request.user, is_liked=True).exists():
                 # Create match request if not exists
-                match_request, _ = MatchRequest.objects.get_or_create(from_user=request.user, to_user=to_user)
                 return Response({
                     "status": status.HTTP_200_OK,
                     "message": "You liked the user. Match request sent.",
@@ -214,28 +213,44 @@ class ReceivedMatchRequestsAPIView(APIView):
 
 
 # Accept/Reject Match Request API
-class MatchRequestActionAPIView(APIView):
+class SwipeActionAPIView(APIView):
+    """
+    API to accept or reject a swipe request.
+    A swipe can only be accepted/rejected by the `to_user`.
+    """
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, request_id):
+    def post(self, request, swipe_id):
         action = request.data.get("action")  # "accept" or "reject"
 
+        # Validate the action
+        if action not in ["accept", "reject"]:
+            return Response(
+                {"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid action"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
-            match_request = MatchRequest.objects.get(id=request_id, to_user=request.user)
-        except MatchRequest.DoesNotExist:
-            return Response({"status": status.HTTP_404_NOT_FOUND, "message": "Match request not found"}, status=status.HTTP_404_NOT_FOUND)
+            swipe = Swipe.objects.get(id=swipe_id, to_user=request.user, is_liked=True)
+        except Swipe.DoesNotExist:
+            return Response(
+                {"status": status.HTTP_404_NOT_FOUND, "message": "Swipe not found or unauthorized"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
+        # Perform action
         if action == "accept":
-            match_request.accept()
-            return Response({"status": status.HTTP_200_OK, "message": "Match request accepted"})
-        elif action == "reject":
-            match_request.is_rejected = True
-            match_request.responded_at = timezone.now()
-            match_request.save()
-            return Response({"status": status.HTTP_200_OK, "message": "Match request rejected"})
-        else:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
+            swipe.accept()
+            return Response(
+                {"status": status.HTTP_200_OK, "message": "Match request accepted"}
+            )
 
+        elif action == "reject":
+            swipe.reject()
+            return Response(
+                {"status": status.HTTP_200_OK, "message": "Match request rejected"}
+            )
+        
 
 # matched list
 class MatchesListAPIView(APIView):
