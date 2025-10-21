@@ -23,11 +23,12 @@ class SwipeUsersAPIView(APIView):
         user_profile = getattr(user, "profile", None)
 
         if not user_profile:
-            return Response({
-                "status": 400,
+            response_data = {
+                "status": "400",
                 "message": "User profile not found.",
-                "response": []
-            }, status=400)
+                "Response": []
+            }
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
         # Get user's preferences
         meet_preference = user_profile.would_like_to_meet
@@ -50,7 +51,7 @@ class SwipeUsersAPIView(APIView):
             all_other_users = list(users_qs)
             matched_users = sample(all_other_users, min(len(all_other_users), 10))
 
-        response_data = []
+        response_list = []
 
         for matched_user in matched_users:
             profile = getattr(matched_user, "profile", None)
@@ -71,7 +72,7 @@ class SwipeUsersAPIView(APIView):
                 if matched_user.profile_photo else None
             )
 
-            response_data.append({
+            response_list.append({
                 "id": matched_user.id,
                 "full_name": matched_user.full_name,
                 "profile_photo": profile_photo_url,
@@ -82,12 +83,13 @@ class SwipeUsersAPIView(APIView):
                 "interests": [i.name for i in profile.interests.all()],
             })
 
-        return Response({
-            "status": 200,
+        response_data = {
+            "status": "200",
             "message": "Users fetched successfully",
-            "response": response_data
-        })
+            "Response": response_list if response_list else []
+        }
 
+        return Response(response_data, status=status.HTTP_200_OK)
 
 # swipe API
 class SwipeAPIView(APIView):
@@ -98,12 +100,22 @@ class SwipeAPIView(APIView):
         is_liked = request.data.get("is_liked", False)
 
         if not to_user_id:
-            return Response({"status": status.HTTP_400_BAD_REQUEST, "message": "to_user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+            response_data = {
+                "status": "400",
+                "message": "to_user_id is required",
+                "Response": []
+            }
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             to_user = User.objects.get(id=to_user_id)
         except User.DoesNotExist:
-            return Response({"status": status.HTTP_404_NOT_FOUND, "message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            response_data = {
+                "status": "404",
+                "message": "User not found",
+                "Response": []
+            }
+            return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
         # Create or update Swipe
         swipe, created = Swipe.objects.update_or_create(
@@ -112,29 +124,25 @@ class SwipeAPIView(APIView):
             defaults={"is_liked": is_liked}
         )
 
-        # If liked, create a match request
+        swipe_data = SwipeSerializer(swipe).data
+
+        # Determine message
         if is_liked:
             # Check if the other user also liked you
             if Swipe.objects.filter(from_user=to_user, to_user=request.user, is_liked=True).exists():
-                # Create match request if not exists
-                return Response({
-                    "status": status.HTTP_200_OK,
-                    "message": "You liked the user. Match request sent.",
-                    "swipe": SwipeSerializer(swipe).data
-                })
+                message = "You liked the user. Match request sent."
             else:
-                return Response({
-                    "status": status.HTTP_200_OK,
-                    "message": "You liked the user.",
-                    "swipe": SwipeSerializer(swipe).data
-                })
+                message = "You liked the user."
+        else:
+            message = "You disliked the user."
 
-        return Response({
-            "status": status.HTTP_200_OK,
-            "message": "You disliked the user.",
-            "swipe": SwipeSerializer(swipe).data
-        })
+        response_data = {
+            "status": "200",
+            "message": message,
+            "Response": [swipe_data] if swipe_data else []
+        }
 
+        return Response(response_data, status=status.HTTP_200_OK)
 
 # received match requests
 class ReceivedMatchRequestsAPIView(APIView):
@@ -147,11 +155,12 @@ class ReceivedMatchRequestsAPIView(APIView):
             # Ensure user profile exists
             user_profile = getattr(user, "profile", None)
             if not user_profile:
-                return Response({
-                    "status": 400,
+                response_data = {
+                    "status": "400",
                     "message": "User profile not found.",
-                    "response": []
-                }, status=400)
+                    "Response": []
+                }
+                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
             # Fetch all pending requests (liked but not accepted/rejected)
             received_swipes = Swipe.objects.filter(
@@ -162,13 +171,14 @@ class ReceivedMatchRequestsAPIView(APIView):
             ).select_related("from_user", "from_user__profile")
 
             if not received_swipes.exists():
-                return Response({
-                    "status": 404,
+                response_data = {
+                    "status": "404",
                     "message": "No pending match requests.",
-                    "response": []
-                }, status=404)
+                    "Response": []
+                }
+                return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
-            response_data = []
+            response_list = []
 
             for swipe in received_swipes:
                 from_user = swipe.from_user
@@ -190,7 +200,7 @@ class ReceivedMatchRequestsAPIView(APIView):
                     if from_user.profile_photo else None
                 )
 
-                response_data.append({
+                response_list.append({
                     "request_id": swipe.id,
                     "user_id": from_user.id,
                     "full_name": from_user.full_name,
@@ -200,19 +210,21 @@ class ReceivedMatchRequestsAPIView(APIView):
                     "created_at": swipe.created_at,
                 })
 
-            # Success response
-            return Response({
-                "status": 200,
+            response_data = {
+                "status": "200",
                 "message": "Pending match requests fetched successfully.",
-                "response": response_data
-            }, status=200)
+                "Response": response_list if response_list else []
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            return Response({
-                "status": 500,
+            response_data = {
+                "status": "500",
                 "message": f"An unexpected error occurred: {str(e)}",
-                "response": []
-            }, status=500)
+                "Response": []
+            }
+            return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # Accept/Reject Match Request API
@@ -226,51 +238,59 @@ class SwipeActionAPIView(APIView):
     def post(self, request, swipe_id):
         action = request.data.get("action")  # "accept" or "reject"
 
-        # Validate the action
+        # Validate action
         if action not in ["accept", "reject"]:
-            return Response(
-                {"status": status.HTTP_400_BAD_REQUEST, "message": "Invalid action"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            response_data = {
+                "status": "400",
+                "message": "Invalid action. Allowed actions are 'accept' or 'reject'.",
+                "Response": []
+            }
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             swipe = Swipe.objects.get(id=swipe_id, to_user=request.user, is_liked=True)
         except Swipe.DoesNotExist:
-            return Response(
-                {"status": status.HTTP_404_NOT_FOUND, "message": "Swipe not found or unauthorized"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            response_data = {
+                "status": "404",
+                "message": "Swipe not found or unauthorized.",
+                "Response": []
+            }
+            return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
-        # Perform action
+        # Perform the action
         if action == "accept":
             swipe.accept()
-            return Response(
-                {"status": status.HTTP_200_OK, "message": "Match request accepted"}
-            )
+            response_data = {
+                "status": "200",
+                "message": "Match request accepted successfully.",
+                "Response": [
+                    {
+                        "swipe_id": swipe.id,
+                        "from_user_id": swipe.from_user.id,
+                        "to_user_id": swipe.to_user.id,
+                        "action": "accepted",
+                        "updated_at": swipe.updated_at if hasattr(swipe, "updated_at") else None
+                    }
+                ]
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
 
         elif action == "reject":
             swipe.reject()
-            return Response(
-                {"status": status.HTTP_200_OK, "message": "Match request rejected"}
-            )
-        
-
-# matched list
-class MatchesListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        matches1 = Match.objects.filter(user1=request.user)
-        matches2 = Match.objects.filter(user2=request.user)
-        matches = matches1.union(matches2)
-        serializer = MatchSerializer(matches, many=True)
-        return Response({
-            "status": status.HTTP_200_OK,
-            "message": "Matches retrieved successfully",
-            "response": serializer.data
-        })
-
-
+            response_data = {
+                "status": "200",
+                "message": "Match request rejected successfully.",
+                "Response": [
+                    {
+                        "swipe_id": swipe.id,
+                        "from_user_id": swipe.from_user.id,
+                        "to_user_id": swipe.to_user.id,
+                        "action": "rejected",
+                        "updated_at": swipe.updated_at if hasattr(swipe, "updated_at") else None
+                    }
+                ]
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
 
 class MatchedUsersListAPIView(APIView):
     """
@@ -281,42 +301,47 @@ class MatchedUsersListAPIView(APIView):
     def get(self, request):
         try:
             user = request.user
-
             matched_users = Match.get_user_matches(user)
 
+            # If no matches found
             if not matched_users:
-                return Response({
-                    "status": 404,
+                response_data = {
+                    "status": "404",
                     "message": "No matches found.",
-                    "response": []
-                }, status=404)
+                    "Response": []
+                }
+                return Response(response_data, status=status.HTTP_404_NOT_FOUND)
 
-            response_data = []
+            response_list = []
+
             for matched_user in matched_users:
                 profile = getattr(matched_user, "profile", None)
 
-                # profile photo URL
+                # Profile photo URL
                 profile_photo_url = (
                     request.build_absolute_uri(matched_user.profile_photo.url)
                     if matched_user.profile_photo else None
                 )
 
-                response_data.append({
+                response_list.append({
                     "user_id": matched_user.id,
                     "full_name": matched_user.full_name,
                     "profile_photo": profile_photo_url,
                     "is_online": profile.is_online if profile else False,
                 })
 
-            return Response({
-                "status": 200,
+            response_data = {
+                "status": "200",
                 "message": "Matched users fetched successfully.",
-                "response": response_data
-            }, status=200)
+                "Response": response_list if response_list else []
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            return Response({
-                "status": 500,
+            response_data = {
+                "status": "500",
                 "message": f"An unexpected error occurred: {str(e)}",
-                "response": []
-            }, status=500)
+                "Response": []
+            }
+            return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
