@@ -12,48 +12,87 @@ from rest_framework import status, permissions
 
 
 # user registration View
+# Updated UserRegistrationAPIView with detailed debugging
 class UserRegistrationAPIView(APIView):
-    parser_classes = [MultiPartParser, FormParser]  # ✅ handle image uploads
+    parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
+        print("🔍 DEBUG - Registration request received")
+        print(f"🔍 DEBUG - Files in request: {request.FILES}")
+        print(f"🔍 DEBUG - Data in request: {request.data}")
+        
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.save()
+            print("🔍 DEBUG - Serializer is valid")
+            
+            try:
+                user = serializer.save()
+                print(f"🔍 DEBUG - User saved with ID: {user.id}")
 
-            # 🔑 Generate JWT tokens
-            refresh = RefreshToken.for_user(user)
+                # Detailed profile photo debugging
+                if user.profile_photo:
+                    print(f"🔍 DEBUG - Profile photo attributes:")
+                    print(f"   - name: {user.profile_photo.name}")
+                    print(f"   - url: {user.profile_photo.url}")
+                    print(f"   - size: {user.profile_photo.size}")
+                    print(f"   - path: {getattr(user.profile_photo, 'path', 'No path attribute')}")
+                    
+                    # Check S3 existence
+                    from django.core.files.storage import default_storage
+                    exists = default_storage.exists(user.profile_photo.name)
+                    print(f"🔍 DEBUG - File exists in S3: {exists}")
+                    
+                    if exists:
+                        size = default_storage.size(user.profile_photo.name)
+                        print(f"🔍 DEBUG - Actual file size in S3: {size} bytes")
+                    else:
+                        print("❌ DEBUG - FILE WAS NOT UPLOADED TO S3!")
+                        print("❌ DEBUG - This is the root cause!")
+                        
+                else:
+                    print("🔍 DEBUG - No profile photo attached to user")
 
+                # Generate tokens and response...
+                refresh = RefreshToken.for_user(user)
+                response_data = {
+                    "status": "200",
+                    "message": "User registered successfully",
+                    "Response": [
+                        {
+                            "id": user.id,
+                            "full_name": user.full_name,
+                            "email": user.email,
+                            "phone_number": user.phone_number,
+                            "city": user.city,
+                            "state": user.state,
+                            "country": user.country,
+                            "profile_photo": user.profile_photo.url if user.profile_photo else None,
+                            "tokens": {
+                                "refresh": str(refresh),
+                                "access": str(refresh.access_token),
+                            },
+                        }
+                    ]
+                }
+                return Response(response_data, status=status.HTTP_200_OK)
+                
+            except Exception as e:
+                print(f"❌ DEBUG - Error during user creation: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                return Response({
+                    "status": "400", 
+                    "message": f"Error: {str(e)}"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        else:
+            print(f"🔍 DEBUG - Serializer errors: {serializer.errors}")
             response_data = {
-                "status": "200",
-                "message": "User registered successfully",
-                "Response": [
-                    {
-                        "id": user.id,
-                        "full_name": user.full_name,
-                        "email": user.email,
-                        "phone_number": user.phone_number,
-                        "city": user.city,
-                        "state": user.state,
-                        "country": user.country,
-                        "profile_photo": user.profile_photo.url if user.profile_photo else None,
-                        "tokens": {
-                            "refresh": str(refresh),
-                            "access": str(refresh.access_token),
-                        },
-                    }
-                ]
+                "status": "400",
+                "message": "Validation errors",
+                "Response": serializer.errors
             }
-
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        # For errors
-        response_data = {
-            "status": "400",
-            "message": "Validation errors",
-            "Response": serializer.errors
-        }
-        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
-
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 # user login API
 class UserLoginAPIView(APIView):
     def post(self, request):
