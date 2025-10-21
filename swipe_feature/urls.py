@@ -10,7 +10,7 @@ urlpatterns = [
     # received match request
     path('match-requests/', ReceivedMatchRequestsAPIView.as_view(), name='match-requests-list'),
     # Accept or reject a match request
-    path('match-request-action/<int:request_id>/', SwipeActionAPIView.as_view(), name='match-request-action'),
+    path('match-request-action/<int:swipe_id>/', SwipeActionAPIView.as_view(), name='match-request-action'),
     # Get list of confirmed matches
-    path('matches/', MatchesListAPIView.as_view(), name='matches-list'),
+    path('matches/', MatchedUsersListAPIView.as_view(), name='matched-users-list'),
 ]

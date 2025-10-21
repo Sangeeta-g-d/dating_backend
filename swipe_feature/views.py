@@ -153,16 +153,18 @@ class ReceivedMatchRequestsAPIView(APIView):
                     "response": []
                 }, status=400)
 
-            # Fetch all users who liked the current user
+            # Fetch all pending requests (liked but not accepted/rejected)
             received_swipes = Swipe.objects.filter(
                 to_user=user,
-                is_liked=True
+                is_liked=True,
+                is_accepted=False,
+                is_rejected=False
             ).select_related("from_user", "from_user__profile")
 
             if not received_swipes.exists():
                 return Response({
                     "status": 404,
-                    "message": "No users have liked you yet.",
+                    "message": "No pending match requests.",
                     "response": []
                 }, status=404)
 
@@ -189,18 +191,19 @@ class ReceivedMatchRequestsAPIView(APIView):
                 )
 
                 response_data.append({
-                    "request_id": swipe.id,  # using swipe id as request_id
+                    "request_id": swipe.id,
                     "user_id": from_user.id,
                     "full_name": from_user.full_name,
                     "profile_photo": profile_photo_url,
                     "occupation": profile.occupation,
+                    "age": age,
                     "created_at": swipe.created_at,
                 })
 
             # Success response
             return Response({
                 "status": 200,
-                "message": "Users who liked you fetched successfully.",
+                "message": "Pending match requests fetched successfully.",
                 "response": response_data
             }, status=200)
 
@@ -266,3 +269,54 @@ class MatchesListAPIView(APIView):
             "message": "Matches retrieved successfully",
             "response": serializer.data
         })
+
+
+
+class MatchedUsersListAPIView(APIView):
+    """
+    Returns all users who have mutually accepted matches with the logged-in user.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user
+
+            matched_users = Match.get_user_matches(user)
+
+            if not matched_users:
+                return Response({
+                    "status": 404,
+                    "message": "No matches found.",
+                    "response": []
+                }, status=404)
+
+            response_data = []
+            for matched_user in matched_users:
+                profile = getattr(matched_user, "profile", None)
+
+                # profile photo URL
+                profile_photo_url = (
+                    request.build_absolute_uri(matched_user.profile_photo.url)
+                    if matched_user.profile_photo else None
+                )
+
+                response_data.append({
+                    "user_id": matched_user.id,
+                    "full_name": matched_user.full_name,
+                    "profile_photo": profile_photo_url,
+                    "is_online": profile.is_online if profile else False,
+                })
+
+            return Response({
+                "status": 200,
+                "message": "Matched users fetched successfully.",
+                "response": response_data
+            }, status=200)
+
+        except Exception as e:
+            return Response({
+                "status": 500,
+                "message": f"An unexpected error occurred: {str(e)}",
+                "response": []
+            }, status=500)
