@@ -193,13 +193,8 @@ class ReceivedMatchRequestsAPIView(APIView):
                     "request_id": swipe.id,  # using swipe id as request_id
                     "user_id": from_user.id,
                     "full_name": from_user.full_name,
-                    "designation": getattr(profile, "designation", None),
                     "profile_photo": profile_photo_url,
-                    "gender": profile.gender,
                     "occupation": profile.occupation,
-                    "bio": profile.bio,
-                    "age": age,
-                    "interests": [i.name for i in profile.interests.all()],
                     "created_at": swipe.created_at,
                 })
 
