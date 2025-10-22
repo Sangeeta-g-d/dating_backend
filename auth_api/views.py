@@ -12,7 +12,6 @@ from rest_framework import status, permissions
 
 
 # user registration View
-# Updated UserRegistrationAPIView with detailed debugging
 class UserRegistrationAPIView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
@@ -35,7 +34,8 @@ class UserRegistrationAPIView(APIView):
                     print(f"   - name: {user.profile_photo.name}")
                     print(f"   - url: {user.profile_photo.url}")
                     print(f"   - size: {user.profile_photo.size}")
-                    print(f"   - path: {getattr(user.profile_photo, 'path', 'No path attribute')}")
+                    # REMOVE THIS LINE - S3 storage doesn't support .path
+                    # print(f"   - path: {getattr(user.profile_photo, 'path', 'No path attribute')}")
                     
                     # Check S3 existence
                     from django.core.files.storage import default_storage
@@ -93,6 +93,7 @@ class UserRegistrationAPIView(APIView):
                 "Response": serializer.errors
             }
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+        
 # user login API
 class UserLoginAPIView(APIView):
     def post(self, request):
