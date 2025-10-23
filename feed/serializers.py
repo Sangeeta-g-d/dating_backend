@@ -54,12 +54,10 @@ class CommentSerializer(serializers.ModelSerializer):
     def get_created_at(self, obj):
         return format_to_ist(obj.created_at)
 
-
-
 class PostSerializer(serializers.ModelSerializer):
     user = serializers.SerializerMethodField()
-    total_likes = serializers.IntegerField(source="total_likes", read_only=True)
-    total_comments = serializers.IntegerField(source="total_comments", read_only=True)
+    total_likes = serializers.SerializerMethodField()
+    total_comments = serializers.SerializerMethodField()
     comments = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
 
@@ -77,6 +75,12 @@ class PostSerializer(serializers.ModelSerializer):
             "comments",
         ]
 
+    def get_total_likes(self, obj):
+        return obj.total_likes()
+
+    def get_total_comments(self, obj):
+        return obj.total_comments()
+
     def get_user(self, obj):
         return {
             "id": obj.user.id,
@@ -85,8 +89,8 @@ class PostSerializer(serializers.ModelSerializer):
         }
 
     def get_comments(self, obj):
-        # Only top-level comments (exclude replies)
         comments = obj.comments.filter(parent__isnull=True).order_by('-created_at')
+        from .serializers import CommentSerializer  # if in another file, else import top
         return CommentSerializer(comments, many=True).data
 
     def get_created_at(self, obj):
