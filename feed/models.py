@@ -33,10 +33,20 @@ class Comment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments')
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
     content = models.TextField()
+    parent = models.ForeignKey(
+        'self', on_delete=models.CASCADE, 
+        related_name='replies', blank=True, null=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def is_reply(self):
+        return self.parent is not None
+
     def __str__(self):
+        if self.is_reply():
+            return f"Reply by {self.user} to comment {self.parent.id}"
         return f"{self.user} - {self.content[:20]}"
+
 
 # -------------------------
 # Like Model

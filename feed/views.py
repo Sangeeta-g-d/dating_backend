@@ -197,3 +197,57 @@ class AddCommentAPIView(APIView):
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
+    
+
+class ReplyToCommentAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, comment_id):
+        try:
+            parent_comment = Comment.objects.select_related('post').get(id=comment_id)
+        except Comment.DoesNotExist:
+            return Response({
+                "status": "404",
+                "message": "Comment not found",
+                "Response": []
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        post = parent_comment.post
+
+        # ✅ Allow only post owner to reply
+        if post.user != request.user:
+            return Response({
+                "status": "403",
+                "message": "Only the post owner can reply to comments",
+                "Response": []
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        content = request.data.get("content")
+        if not content or content.strip() == "":
+            return Response({
+                "status": "400",
+                "message": "Reply content is required",
+                "Response": []
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        reply = Comment.objects.create(
+            user=request.user,
+            post=post,
+            content=content.strip(),
+            parent=parent_comment
+        )
+
+        response_data = {
+            "status": "200",
+            "message": "Reply added successfully",
+            "Response": {
+                "reply_id": reply.id,
+                "post_id": post.id,
+                "parent_comment_id": parent_comment.id,
+                "user": request.user.full_name if hasattr(request.user, 'full_name') else request.user.username,
+                "content": reply.content,
+                "created_at": format_to_ist(reply.created_at),
+            }
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
