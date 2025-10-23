@@ -14,31 +14,84 @@ class PostCreateSerializer(serializers.ModelSerializer):
         post = Post.objects.create(user=user, **validated_data)
         return post
 
-
-class CommentSerializer(serializers.ModelSerializer):
-    user_name = serializers.CharField(source='user.username', read_only=True)
+class CommentReplySerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
-        fields = ['id', 'user', 'user_name', 'content', 'created_at']
+        fields = ["id", "user", "content", "created_at"]
+
+    def get_user(self, obj):
+        return {
+            "id": obj.user.id,
+            "full_name": obj.user.full_name,
+            "profile_photo": obj.user.profile_photo.url if obj.user.profile_photo else None,
+        }
 
     def get_created_at(self, obj):
         return format_to_ist(obj.created_at)
+    
+
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+    replies = CommentReplySerializer(many=True, read_only=True)
+    created_at = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = ["id", "user", "content", "created_at", "replies"]
+
+    def get_user(self, obj):
+        return {
+            "id": obj.user.id,
+            "full_name": obj.user.full_name,
+            "profile_photo": obj.user.profile_photo.url if obj.user.profile_photo else None,
+        }
+
+    def get_created_at(self, obj):
+        return format_to_ist(obj.created_at)
+
 
 
 class PostSerializer(serializers.ModelSerializer):
-    likes_count = serializers.IntegerField(source='total_likes', read_only=True)
-    comments_count = serializers.IntegerField(source='total_comments', read_only=True)
-    comments = CommentSerializer(many=True, read_only=True)
-    created_at = serializers.SerializerMethodField()  # override with IST
+    user = serializers.SerializerMethodField()
+    total_likes = serializers.IntegerField(source="total_likes", read_only=True)
+    total_comments = serializers.IntegerField(source="total_comments", read_only=True)
+    comments = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
-        fields = ['id', 'user', 'caption', 'image', 'video', 'likes_count', 'comments_count', 'comments', 'created_at']
+        fields = [
+            "id",
+            "user",
+            "caption",
+            "image",
+            "video",
+            "created_at",
+            "total_likes",
+            "total_comments",
+            "comments",
+        ]
+
+    def get_user(self, obj):
+        return {
+            "id": obj.user.id,
+            "full_name": obj.user.full_name,
+            "profile_photo": obj.user.profile_photo.url if obj.user.profile_photo else None,
+        }
+
+    def get_comments(self, obj):
+        # Only top-level comments (exclude replies)
+        comments = obj.comments.filter(parent__isnull=True).order_by('-created_at')
+        return CommentSerializer(comments, many=True).data
 
     def get_created_at(self, obj):
         return format_to_ist(obj.created_at)
+
     
 class InterestSerializer(serializers.ModelSerializer):
     class Meta:
@@ -80,3 +133,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_following_count(self, obj):
         return obj.user.following.count() if hasattr(obj.user, 'following') else 0
+    
+
+class UserMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = settings.AUTH_USER_MODEL
+        fields = ["id", "full_name", "profile_photo"]
+
