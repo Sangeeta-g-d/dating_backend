@@ -35,7 +35,8 @@ class SwipeUsersAPIView(APIView):
         user_interests = user_profile.interests.all()
 
         # Filter base users (exclude self)
-        users_qs = User.objects.exclude(id=user.id)
+        already_swiped_ids = Swipe.objects.filter(from_user=user).values_list('to_user_id', flat=True)
+        users_qs = User.objects.exclude(id__in=already_swiped_ids).exclude(id=user.id)
 
         # --- GENDER FILTER ---
         if meet_preference != "everyone":
@@ -97,52 +98,64 @@ class SwipeAPIView(APIView):
 
     def post(self, request):
         to_user_id = request.data.get("to_user_id")
-        is_liked = request.data.get("is_liked", False)
+        is_liked_raw = request.data.get("is_liked", False)
+
+        # ✅ Safely convert to boolean
+        if isinstance(is_liked_raw, str):
+            is_liked = is_liked_raw.lower() in ["true", "1", "yes"]
+        else:
+            is_liked = bool(is_liked_raw)
 
         if not to_user_id:
-            response_data = {
+            return Response({
                 "status": "400",
                 "message": "to_user_id is required",
                 "Response": []
-            }
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             to_user = User.objects.get(id=to_user_id)
         except User.DoesNotExist:
-            response_data = {
+            return Response({
                 "status": "404",
                 "message": "User not found",
                 "Response": []
-            }
-            return Response(response_data, status=status.HTTP_404_NOT_FOUND)
+            }, status=status.HTTP_404_NOT_FOUND)
 
-        # Create or update Swipe
-        swipe, created = Swipe.objects.update_or_create(
+        # ✅ Prevent multiple swipes
+        if Swipe.objects.filter(from_user=request.user, to_user=to_user).exists():
+            return Response({
+                "status": "400",
+                "message": "You have already swiped on this user.",
+                "Response": []
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # ✅ Create new swipe
+        swipe = Swipe.objects.create(
             from_user=request.user,
             to_user=to_user,
-            defaults={"is_liked": is_liked}
+            is_liked=is_liked
         )
 
         swipe_data = SwipeSerializer(swipe).data
 
-        # Determine message
+        # ✅ Message logic
         if is_liked:
-            # Check if the other user also liked you
             if Swipe.objects.filter(from_user=to_user, to_user=request.user, is_liked=True).exists():
-                message = "You liked the user. Match request sent."
+                message = "It's a match!"
+                swipe.accept()
             else:
                 message = "You liked the user."
         else:
+            swipe.reject()
             message = "You disliked the user."
 
-        response_data = {
+        return Response({
             "status": "200",
             "message": message,
-            "Response": [swipe_data] if swipe_data else []
-        }
+            "Response": [swipe_data]
+        }, status=status.HTTP_200_OK)
 
-        return Response(response_data, status=status.HTTP_200_OK)
 
 # received match requests
 class ReceivedMatchRequestsAPIView(APIView):
