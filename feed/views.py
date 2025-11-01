@@ -35,23 +35,27 @@ class MatchedUserPostsAPIView(APIView):
         # Get all matched users
         matched_users = Match.get_user_matches(user)
 
-        # Fetch posts of matched users, newest first
-        posts = Post.objects.filter(user__in=matched_users).order_by('-created_at')
+        # Include logged-in user's own posts as well
+        all_users = list(matched_users) + [user]
+
+        # Fetch posts of matched users + logged-in user, newest first
+        posts = Post.objects.filter(user__in=all_users).order_by('-created_at')
 
         # Pagination
         paginator = PageNumberPagination()
-        paginator.page_size = 10  # adjust page size
+        paginator.page_size = 10  # adjust as needed
         paginated_posts = paginator.paginate_queryset(posts, request)
 
-        serializer = PostSerializer(paginated_posts, many=True, context={"request": request})
+        serializer = PostSerializer(paginated_posts, many=True, context={"request": request, "current_user": user})
 
         response_data = {
             "status": "200",
-            "message": "Matched user posts fetched successfully",
+            "message": "Matched user posts (including your posts) fetched successfully",
             "Response": serializer.data if serializer.data else []
         }
 
         return paginator.get_paginated_response(response_data)
+
     
 class PostCommentsAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]

@@ -86,7 +86,7 @@ class PostSerializer(serializers.ModelSerializer):
     total_comments = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
-    media = serializers.SerializerMethodField()  # ✅ override field
+    media = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
@@ -109,16 +109,22 @@ class PostSerializer(serializers.ModelSerializer):
         return [request.build_absolute_uri(settings.MEDIA_URL + path) for path in obj.media]
 
     def get_user(self, obj):
-        user = obj.user
         request = self.context.get("request")
+        current_user = self.context.get("current_user")
+        user = obj.user
+
+        # If the post belongs to the logged-in user, show "You"
+        full_name = "You" if current_user and user == current_user else user.full_name
+
         profile_photo_url = (
             request.build_absolute_uri(user.profile_photo.url)
             if user.profile_photo
             else None
         )
+
         return {
             "id": user.id,
-            "full_name": user.full_name,
+            "full_name": full_name,
             "profile_photo": profile_photo_url,
         }
 
@@ -135,6 +141,7 @@ class PostSerializer(serializers.ModelSerializer):
     def get_created_at(self, obj):
         from dating_backend.timezone_utils import format_to_ist
         return format_to_ist(obj.created_at)
+
 
 
 class CommentSerializer(serializers.ModelSerializer):
