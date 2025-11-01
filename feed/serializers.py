@@ -2,17 +2,42 @@ from rest_framework import serializers
 from .models import *
 from dating_backend.timezone_utils import format_to_ist  # Utility to format datetime to IST
 from auth_api.models import UserProfile, Interest
-
+import os
 
 class PostCreateSerializer(serializers.ModelSerializer):
+    media = serializers.ListField(
+        child=serializers.FileField(allow_empty_file=False, use_url=False),
+        write_only=True,
+        required=False
+    )
+
     class Meta:
         model = Post
-        fields = ['caption', 'image', 'video']
+        fields = ['caption', 'media']
 
     def create(self, validated_data):
         user = self.context['request'].user
-        post = Post.objects.create(user=user, **validated_data)
+        media_files = validated_data.pop('media', [])
+        media_urls = []
+        upload_path = os.path.join(settings.MEDIA_ROOT, 'posts')
+        os.makedirs(upload_path, exist_ok=True)
+
+        for file in media_files:
+            file_name = file.name
+            file_path = os.path.join(upload_path, file_name)
+
+            # Save file
+            with open(file_path, 'wb+') as destination:
+                for chunk in file.chunks():
+                    destination.write(chunk)
+
+            # Save relative URL for JSONField
+            media_urls.append(f"posts/{file_name}")
+
+        post = Post.objects.create(user=user, media=media_urls, **validated_data)
         return post
+
+    
 
 class CommentReplySerializer(serializers.ModelSerializer):
     user = serializers.SerializerMethodField()
@@ -54,12 +79,14 @@ class CommentSerializer(serializers.ModelSerializer):
     def get_created_at(self, obj):
         return format_to_ist(obj.created_at)
 
+
 class PostSerializer(serializers.ModelSerializer):
     user = serializers.SerializerMethodField()
     total_likes = serializers.SerializerMethodField()
     total_comments = serializers.SerializerMethodField()
-    comments = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
+    media = serializers.SerializerMethodField()  # ✅ override field
 
     class Meta:
         model = Post
@@ -67,19 +94,63 @@ class PostSerializer(serializers.ModelSerializer):
             "id",
             "user",
             "caption",
-            "image",
-            "video",
+            "media",
             "created_at",
             "total_likes",
             "total_comments",
-            "comments",
+            "is_liked",
         ]
+
+    def get_media(self, obj):
+        """Convert stored relative paths into full URLs"""
+        request = self.context.get("request")
+        if not obj.media:
+            return []
+        return [request.build_absolute_uri(settings.MEDIA_URL + path) for path in obj.media]
+
+    def get_user(self, obj):
+        user = obj.user
+        request = self.context.get("request")
+        profile_photo_url = (
+            request.build_absolute_uri(user.profile_photo.url)
+            if user.profile_photo
+            else None
+        )
+        return {
+            "id": user.id,
+            "full_name": user.full_name,
+            "profile_photo": profile_photo_url,
+        }
 
     def get_total_likes(self, obj):
         return obj.total_likes()
 
     def get_total_comments(self, obj):
         return obj.total_comments()
+
+    def get_is_liked(self, obj):
+        user = self.context.get('request').user
+        return obj.likes.filter(user=user).exists()
+
+    def get_created_at(self, obj):
+        from dating_backend.timezone_utils import format_to_ist
+        return format_to_ist(obj.created_at)
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+    replies = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = [
+            "id",
+            "user",
+            "content",
+            "created_at",
+            "replies",
+        ]
 
     def get_user(self, obj):
         return {
@@ -88,15 +159,14 @@ class PostSerializer(serializers.ModelSerializer):
             "profile_photo": obj.user.profile_photo.url if obj.user.profile_photo else None,
         }
 
-    def get_comments(self, obj):
-        comments = obj.comments.filter(parent__isnull=True).order_by('-created_at')
-        from .serializers import CommentSerializer  # if in another file, else import top
-        return CommentSerializer(comments, many=True).data
+    def get_replies(self, obj):
+        replies = obj.replies.all().order_by('created_at')
+        return CommentSerializer(replies, many=True, context=self.context).data
 
     def get_created_at(self, obj):
         return format_to_ist(obj.created_at)
 
-    
+
 class InterestSerializer(serializers.ModelSerializer):
     class Meta:
         model = Interest

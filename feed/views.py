@@ -15,20 +15,16 @@ class AddPostAPIView(APIView):
         serializer = PostCreateSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             post = serializer.save()
-            response_data = {
+            return Response({
                 "status": "200",
                 "message": "Post created successfully",
-                "Response": PostSerializer(post).data if post else []
-            }
-            return Response(response_data, status=status.HTTP_201_CREATED)
-        else:
-            response_data = {
-                "status": "400",
-                "message": "Failed to create post",
-                "Response": serializer.errors if serializer.errors else []
-            }
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
-        
+                "Response": PostSerializer(post, context={'request': request}).data  # ✅ fixed here
+            }, status=status.HTTP_201_CREATED)
+        return Response({
+            "status": "400",
+            "message": "Failed to create post",
+            "Response": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 class MatchedUserPostsAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -47,7 +43,7 @@ class MatchedUserPostsAPIView(APIView):
         paginator.page_size = 10  # adjust page size
         paginated_posts = paginator.paginate_queryset(posts, request)
 
-        serializer = PostSerializer(paginated_posts, many=True)
+        serializer = PostSerializer(paginated_posts, many=True, context={"request": request})
 
         response_data = {
             "status": "200",
@@ -57,6 +53,35 @@ class MatchedUserPostsAPIView(APIView):
 
         return paginator.get_paginated_response(response_data)
     
+class PostCommentsAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, post_id):
+        try:
+            post = Post.objects.get(id=post_id)
+        except Post.DoesNotExist:
+            return Response({
+                "status": 404,
+                "message": "Post not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        comments = post.comments.filter(parent__isnull=True).order_by('-created_at')
+
+        paginator = PageNumberPagination()
+        paginator.page_size = 10  # optional pagination
+        paginated_comments = paginator.paginate_queryset(comments, request)
+
+        serializer = CommentSerializer(paginated_comments, many=True, context={"request": request})
+
+        response_data = {
+            "status": 200,
+            "message": "Comments fetched successfully",
+            "Response": serializer.data
+        }
+
+        return paginator.get_paginated_response(response_data)
+
+
 class UserProfileAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

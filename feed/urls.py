@@ -8,4 +8,5 @@ urlpatterns = [
     path('like-toggle/<int:post_id>/', ToggleLikeAPIView.as_view(), name='toggle-like'),
     path('add-comment/<int:post_id>/',AddCommentAPIView.as_view(),name="add-comment"),
     path("comment-reply/<int:comment_id>/", ReplyToCommentAPIView.as_view(), name="reply_to_comment"),
+    path('comments-posts/<int:post_id>/', PostCommentsAPIView.as_view(), name='post-comments'),
 ]
