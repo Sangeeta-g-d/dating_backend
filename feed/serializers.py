@@ -183,10 +183,10 @@ class InterestSerializer(serializers.ModelSerializer):
 
 
 class UserPostSerializer(serializers.ModelSerializer):
-    total_likes = serializers.IntegerField(source='total_likes', read_only=True)
-    total_comments = serializers.IntegerField(source='total_comments', read_only=True)
     user_name = serializers.CharField(source='user.full_name', read_only=True)
     profile_photo = serializers.ImageField(source='user.profile_photo', read_only=True)
+    total_likes = serializers.SerializerMethodField()
+    total_comments = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
@@ -195,11 +195,17 @@ class UserPostSerializer(serializers.ModelSerializer):
             'user_name',
             'profile_photo',
             'caption',
-            'media',           # ✅ correct field (not image)
+            'media',
             'total_likes',
             'total_comments',
             'created_at',
         ]
+
+    def get_total_likes(self, obj):
+        return obj.total_likes()
+
+    def get_total_comments(self, obj):
+        return obj.total_comments()
 
     
 class UserProfileSerializer(serializers.ModelSerializer):
