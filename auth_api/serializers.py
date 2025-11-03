@@ -122,17 +122,25 @@ class UserDetailsSerializer(serializers.ModelSerializer):
     state = serializers.CharField(source="user.state", required=False, allow_null=True, allow_blank=True)
     country = serializers.CharField(source="user.country", required=False, allow_null=True, allow_blank=True)
 
-    interests = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Interest.objects.all(), required=False
+    # 👇 Show interest names while still allowing updates via IDs
+    interests = serializers.SerializerMethodField()
+    interest_ids = serializers.PrimaryKeyRelatedField(
+        source="interests", many=True, queryset=Interest.objects.all(),
+        write_only=True, required=False
     )
 
     class Meta:
         model = UserProfile
-        exclude = ["user"]  # prevent direct user id editing
+        exclude = ["user"]
+
+    def get_interests(self, obj):
+        """Return list of interests with id and name"""
+        return [{"id": interest.id, "name": interest.name} for interest in obj.interests.all()]
 
     def update(self, instance, validated_data):
         """Handle nested user updates and profile updates"""
         user_data = validated_data.pop("user", {})
+        interests_data = validated_data.pop("interests", None)
         user = instance.user
 
         # Update user fields
@@ -145,8 +153,12 @@ class UserDetailsSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
 
+        # Update interests if provided
+        if interests_data is not None:
+            instance.interests.set(interests_data)
+
         return instance
-    
+
 
 # fetch logged in user posts
 class PostSerializer(serializers.ModelSerializer):
