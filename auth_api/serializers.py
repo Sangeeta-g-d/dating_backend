@@ -162,12 +162,23 @@ class UserDetailsSerializer(serializers.ModelSerializer):
 
 # fetch logged in user posts
 class PostSerializer(serializers.ModelSerializer):
-    total_likes = serializers.IntegerField(source='total_likes', read_only=True)
-    total_comments = serializers.IntegerField(source='total_comments', read_only=True)
+    total_likes = serializers.SerializerMethodField()
+    total_comments = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
         fields = [
-            'id', 'caption', 'media', 'created_at', 'updated_at',
-            'total_likes', 'total_comments'
+            'id',
+            'caption',
+            'media',
+            'created_at',
+            'updated_at',
+            'total_likes',
+            'total_comments'
         ]
+
+    def get_total_likes(self, obj):
+        return obj.total_likes()
+
+    def get_total_comments(self, obj):
+        return obj.total_comments()
