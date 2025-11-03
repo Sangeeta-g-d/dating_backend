@@ -183,16 +183,24 @@ class InterestSerializer(serializers.ModelSerializer):
 
 
 class UserPostSerializer(serializers.ModelSerializer):
-    likes_count = serializers.IntegerField(source='total_likes', read_only=True)
-    comments_count = serializers.IntegerField(source='total_comments', read_only=True)
-    created_at = serializers.SerializerMethodField()
+    total_likes = serializers.IntegerField(source='total_likes', read_only=True)
+    total_comments = serializers.IntegerField(source='total_comments', read_only=True)
+    user_name = serializers.CharField(source='user.full_name', read_only=True)
+    profile_photo = serializers.ImageField(source='user.profile_photo', read_only=True)
 
     class Meta:
         model = Post
-        fields = ['id', 'caption', 'image', 'video', 'likes_count', 'comments_count', 'created_at']
+        fields = [
+            'id',
+            'user_name',
+            'profile_photo',
+            'caption',
+            'media',           # ✅ correct field (not image)
+            'total_likes',
+            'total_comments',
+            'created_at',
+        ]
 
-    def get_created_at(self, obj):
-        return format_to_ist(obj.created_at)
     
 class UserProfileSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.full_name', read_only=True)
