@@ -3,7 +3,8 @@ from .models import *
 from dating_backend.timezone_utils import format_to_ist  # Utility to format datetime to IST
 from auth_api.models import UserProfile, Interest
 import os
-
+from auth_api.models import CustomUser
+from swipe_feature.models import Match
 class PostCreateSerializer(serializers.ModelSerializer):
     media = serializers.ListField(
         child=serializers.FileField(allow_empty_file=False, use_url=False),
@@ -198,26 +199,24 @@ class UserProfileSerializer(serializers.ModelSerializer):
     email = serializers.CharField(source='user.email', read_only=True)
     profile_photo = serializers.ImageField(source='user.profile_photo', read_only=True)
     interests = InterestSerializer(many=True, read_only=True)
-    followers_count = serializers.SerializerMethodField()
-    following_count = serializers.SerializerMethodField()
+    matches_count = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
         fields = [
             'user_name', 'email', 'profile_photo', 'bio', 'gender', 'date_of_birth',
             'height', 'marital_status', 'mother_tongue', 'religion', 'occupation',
-            'looking_for', 'would_like_to_meet', 'interests', 'followers_count', 'following_count'
+            'looking_for', 'would_like_to_meet', 'interests', 'matches_count'
         ]
 
-    def get_followers_count(self, obj):
-        return obj.user.followers.count() if hasattr(obj.user, 'followers') else 0
+    def get_matches_count(self, obj):
+        """Return total number of matches for this user"""
+        return Match.objects.filter(
+            models.Q(user1=obj.user) | models.Q(user2=obj.user)
+        ).count()
 
-    def get_following_count(self, obj):
-        return obj.user.following.count() if hasattr(obj.user, 'following') else 0
-    
 
 class UserMiniSerializer(serializers.ModelSerializer):
     class Meta:
-        model = settings.AUTH_USER_MODEL
+        model = CustomUser
         fields = ["id", "full_name", "profile_photo"]
-

@@ -27,6 +27,7 @@ urlpatterns = [
     path('feeds/',include('feed.urls')),
     path('chat/',include('chat.urls')),
     path('ask/',include('ask_me_feature.urls')),
+    path('story/',include('story.urls')),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -10,4 +10,7 @@ urlpatterns = [
     path("add-user-details/",UserProfileAPIView.as_view(),name="user-details"),
     path('update-fcm-token/', UpdateFCMTokenAPIView.as_view(), name='update_fcm_token'),
     path('refresh-token/', RefreshAccessTokenAPIView.as_view(), name='token_refresh'),
+    path('user_profile/', UserDetailsProfileAPIView.as_view(), name='user_profile'),
+    path('user-post/', UserFeedAPIView.as_view(), name='user_posts'),
+    path('user-post/<int:pk>/', UserFeedAPIView.as_view(), name='delete-post'),
 ]

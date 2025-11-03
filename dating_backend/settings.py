@@ -45,7 +45,8 @@ INSTALLED_APPS = [
     'feed',
     'channels',
     'chat',
-    'ask_me_feature'
+    'ask_me_feature',
+    'story'
 ]
 
 AUTH_USER_MODEL = 'auth_api.CustomUser'

@@ -9,7 +9,8 @@ from django.core.mail import send_mail
 from rest_framework.permissions import IsAuthenticated,AllowAny  
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import status, permissions
-
+from swipe_feature.models import Match
+from django.db.models import Q
 
 # user registration View
 class UserRegistrationAPIView(APIView):
@@ -379,3 +380,139 @@ class RefreshAccessTokenAPIView(APIView):
                 "Response": []
             }
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+        
+
+# user profile
+class UserDetailsProfileAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """Retrieve logged-in user's profile with total posts and matches"""
+        try:
+            profile = request.user.profile
+        except UserProfile.DoesNotExist:
+            return Response({
+                "status": "404",
+                "message": "Profile not found",
+                "Response": []
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = UserDetailsSerializer(profile)
+
+        # --- Count user posts ---
+        total_posts = Post.objects.filter(user=request.user).count()
+
+        # --- Count user matches ---
+        total_matches = Match.objects.filter(
+            Q(user1=request.user) | Q(user2=request.user)
+        ).count()
+
+        response_data = {
+            "status": "200",
+            "message": "Profile fetched successfully",
+            "Response": [{
+                **serializer.data,
+                "total_posts": total_posts,
+                "total_matches": total_matches
+            }]
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        """Update full profile"""
+        try:
+            profile = request.user.profile
+        except UserProfile.DoesNotExist:
+            return Response({
+                "status": "404",
+                "message": "Profile not found",
+                "Response": []
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = UserDetailsSerializer(profile, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            response_data = {
+                "status": "200",
+                "message": "Profile updated successfully",
+                "Response": [serializer.data]
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+        return Response({
+            "status": "400",
+            "message": "Validation error",
+            "Response": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request):
+        """Partially update profile"""
+        try:
+            profile = request.user.profile
+        except UserProfile.DoesNotExist:
+            return Response({
+                "status": "404",
+                "message": "Profile not found",
+                "Response": []
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = UserDetailsSerializer(profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            response_data = {
+                "status": "200",
+                "message": "Profile updated successfully",
+                "Response": [serializer.data]
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
+        return Response({
+            "status": "400",
+            "message": "Validation error",
+            "Response": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    
+
+# logged in user posts and also delete post
+class UserFeedAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """
+        Fetch all posts of the logged-in user (feed)
+        """
+        posts = Post.objects.filter(user=request.user).order_by('-created_at')
+        serializer = PostSerializer(posts, many=True)
+
+        response_data = {
+            "status": "200",
+            "message": "User feed fetched successfully",
+            "Response": serializer.data if serializer.data else []
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    def delete(self, request, pk=None):
+        """
+        Delete a post by ID (only if it belongs to the logged-in user)
+        """
+        if not pk:
+            return Response({
+                "status": "400",
+                "message": "Post ID is required",
+                "Response": []
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            post = Post.objects.get(id=pk, user=request.user)
+        except Post.DoesNotExist:
+            return Response({
+                "status": "404",
+                "message": "Post not found or unauthorized access",
+                "Response": []
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        post.delete()
+        return Response({
+            "status": "200",
+            "message": "Post deleted successfully",
+            "Response": []
+        }, status=status.HTTP_200_OK)

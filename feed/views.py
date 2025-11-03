@@ -99,26 +99,10 @@ class UserProfileAPIView(APIView):
                 "Response": []
             }, status=status.HTTP_404_NOT_FOUND)
 
-        # Check if logged-in user is matched with this user
+        # Check match status
         is_matched = other_user in Match.get_user_matches(request.user)
 
-        # -------------------------------
-        # Case 1: Not Matched — show limited info
-        # -------------------------------
-        if not is_matched:
-            response_data = {
-                "status": "200",
-                "message": "User profile limited due to no match",
-                "Response": {
-                    "user_name": other_user.full_name,
-                    "profile_photo": other_user.profile_photo.url if other_user.profile_photo else None
-                }
-            }
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        # -------------------------------
-        # Case 2: Matched — show full profile + posts
-        # -------------------------------
+        # Get profile instance
         profile = getattr(other_user, "profile", None)
         if not profile:
             return Response({
@@ -127,23 +111,32 @@ class UserProfileAPIView(APIView):
                 "Response": []
             }, status=status.HTTP_404_NOT_FOUND)
 
+        # Serialize profile
         profile_serializer = UserProfileSerializer(profile)
 
-        # Get all posts (no pagination)
-        posts = Post.objects.filter(user=other_user).order_by('-created_at')
-        posts_serializer = UserPostSerializer(posts, many=True)
+        # If matched → include posts
+        if is_matched:
+            posts = Post.objects.filter(user=other_user).order_by('-created_at')
+            posts_serializer = UserPostSerializer(posts, many=True)
+            posts_data = posts_serializer.data
+            message = "User profile (matched) fetched successfully"
+        else:
+            posts_data = []
+            message = "User profile fetched successfully (not matched)"
 
+        # Response
         response_data = {
             "status": "200",
-            "message": "User profile fetched successfully",
+            "message": message,
             "Response": {
+                "isMatched": is_matched,
                 "profile": profile_serializer.data,
-                "posts": posts_serializer.data if posts_serializer.data else []
+                "posts": posts_data
             }
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
-
+    
 # like API
 class ToggleLikeAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]

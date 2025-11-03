@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import *
 from django.contrib.auth import authenticate
 from admin_part.models import Interest
+from feed.models import Post
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
@@ -111,3 +112,50 @@ class DeviceTokenSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeviceToken
         fields = ['device_type', 'fcm_token']
+
+
+class UserDetailsSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(source="user.full_name", required=False)
+    phone_number = serializers.CharField(source="user.phone_number", required=False, allow_null=True, allow_blank=True)
+    profile_photo = serializers.ImageField(source="user.profile_photo", required=False, allow_null=True)
+    city = serializers.CharField(source="user.city", required=False, allow_null=True, allow_blank=True)
+    state = serializers.CharField(source="user.state", required=False, allow_null=True, allow_blank=True)
+    country = serializers.CharField(source="user.country", required=False, allow_null=True, allow_blank=True)
+
+    interests = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Interest.objects.all(), required=False
+    )
+
+    class Meta:
+        model = UserProfile
+        exclude = ["user"]  # prevent direct user id editing
+
+    def update(self, instance, validated_data):
+        """Handle nested user updates and profile updates"""
+        user_data = validated_data.pop("user", {})
+        user = instance.user
+
+        # Update user fields
+        for attr, value in user_data.items():
+            setattr(user, attr, value)
+        user.save()
+
+        # Update profile fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        return instance
+    
+
+# fetch logged in user posts
+class PostSerializer(serializers.ModelSerializer):
+    total_likes = serializers.IntegerField(source='total_likes', read_only=True)
+    total_comments = serializers.IntegerField(source='total_comments', read_only=True)
+
+    class Meta:
+        model = Post
+        fields = [
+            'id', 'caption', 'media', 'created_at', 'updated_at',
+            'total_likes', 'total_comments'
+        ]
