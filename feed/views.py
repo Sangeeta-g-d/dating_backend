@@ -114,9 +114,12 @@ class UserProfileAPIView(APIView):
         # Serialize profile
         profile_serializer = UserProfileSerializer(profile)
 
-        # If matched → include posts
+        # Get posts and post count (irrespective of match)
+        posts = Post.objects.filter(user=other_user).order_by('-created_at')
+        post_count = posts.count()
+
+        # Only include post details if matched
         if is_matched:
-            posts = Post.objects.filter(user=other_user).order_by('-created_at')
             posts_serializer = UserPostSerializer(posts, many=True)
             posts_data = posts_serializer.data
             message = "User profile (matched) fetched successfully"
@@ -124,18 +127,20 @@ class UserProfileAPIView(APIView):
             posts_data = []
             message = "User profile fetched successfully (not matched)"
 
-        # Response
+        # Final response
         response_data = {
             "status": "200",
             "message": message,
             "Response": {
                 "isMatched": is_matched,
+                "post_count": post_count,  # 👈 always included
                 "profile": profile_serializer.data,
                 "posts": posts_data
             }
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
+
     
 # like API
 class ToggleLikeAPIView(APIView):
