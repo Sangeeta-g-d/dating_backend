@@ -162,23 +162,26 @@ class UserDetailsSerializer(serializers.ModelSerializer):
 
 # fetch logged in user posts
 class PostSerializer(serializers.ModelSerializer):
-    total_likes = serializers.SerializerMethodField()
-    total_comments = serializers.SerializerMethodField()
+    total_likes = serializers.IntegerField(read_only=True)
+    total_comments = serializers.IntegerField(read_only=True)
+    media = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
         fields = [
-            'id',
-            'caption',
-            'media',
-            'created_at',
-            'updated_at',
-            'total_likes',
-            'total_comments'
+            'id', 'caption', 'media', 'created_at', 'updated_at',
+            'total_likes', 'total_comments'
         ]
 
-    def get_total_likes(self, obj):
-        return obj.total_likes()
+    def get_media(self, obj):
+        request = self.context.get('request')
+        media_files = obj.media  # Assuming this is a list field or related set
+        full_urls = []
 
-    def get_total_comments(self, obj):
-        return obj.total_comments()
+        if isinstance(media_files, list):
+            for m in media_files:
+                if request:
+                    full_urls.append(request.build_absolute_uri(m))
+                else:
+                    full_urls.append(f"{settings.MEDIA_URL}{m}")
+        return full_urls
