@@ -187,6 +187,7 @@ class UserPostSerializer(serializers.ModelSerializer):
     profile_photo = serializers.ImageField(source='user.profile_photo', read_only=True)
     total_likes = serializers.SerializerMethodField()
     total_comments = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField() 
 
     class Meta:
         model = Post
@@ -206,6 +207,10 @@ class UserPostSerializer(serializers.ModelSerializer):
 
     def get_total_comments(self, obj):
         return obj.total_comments()
+    
+    def get_created_at(self, obj):
+        """Return created_at in IST formatted style"""
+        return format_to_ist(obj.created_at)
 
     
 class UserProfileSerializer(serializers.ModelSerializer):
