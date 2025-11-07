@@ -5,6 +5,9 @@ from auth_api.models import UserProfile, Interest
 import os
 from auth_api.models import CustomUser
 from swipe_feature.models import Match
+import uuid
+from django.core.files.storage import default_storage
+
 class PostCreateSerializer(serializers.ModelSerializer):
     media = serializers.ListField(
         child=serializers.FileField(allow_empty_file=False, use_url=False),
@@ -20,24 +23,26 @@ class PostCreateSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         media_files = validated_data.pop('media', [])
         media_urls = []
-        upload_path = os.path.join(settings.MEDIA_ROOT, 'posts')
-        os.makedirs(upload_path, exist_ok=True)
 
         for file in media_files:
-            file_name = file.name
-            file_path = os.path.join(upload_path, file_name)
+            # Generate unique filename
+            ext = os.path.splitext(file.name)[1]
+            unique_filename = f"{uuid.uuid4().hex}{ext}"
+            
+            # Save to S3 (automatically uses your MediaStorage backend)
+            path = default_storage.save(f"posts/{unique_filename}", file)
+            
+            # Get full URL
+            url = default_storage.url(path)
+            media_urls.append(url)
 
-            # Save file
-            with open(file_path, 'wb+') as destination:
-                for chunk in file.chunks():
-                    destination.write(chunk)
-
-            # Save relative URL for JSONField
-            media_urls.append(f"posts/{file_name}")
-
-        post = Post.objects.create(user=user, media=media_urls, **validated_data)
+        # Create post with S3 URLs
+        post = Post.objects.create(
+            user=user,
+            caption=validated_data.get('caption', ''),
+            media=media_urls
+        )
         return post
-
     
 
 class CommentReplySerializer(serializers.ModelSerializer):
