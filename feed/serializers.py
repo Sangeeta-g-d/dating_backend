@@ -26,28 +26,25 @@ class PostCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = self.context['request'].user
         media_files = validated_data.pop('media', [])
-        media_urls = []
+        media_paths = []  # Changed from media_urls to media_paths
 
         for file in media_files:
-            # Generate unique filename to avoid conflicts
             file_extension = os.path.splitext(file.name)[1]
             file_name = f"{uuid.uuid4().hex}{file_extension}"
-            
-            # Upload to S3 using default_storage (your MediaStorage backend)
             file_path = f"posts/{file_name}"
+            
+            # Save to S3
             saved_path = default_storage.save(file_path, ContentFile(file.read()))
             
-            # Get the full S3 URL
-            file_url = default_storage.url(saved_path)
-            media_urls.append(file_url)
+            # ✅ Store only the relative path, NOT the full URL
+            media_paths.append(saved_path)  # Will be: posts/205220fa...jpeg
 
         post = Post.objects.create(
             user=user, 
-            media=media_urls, 
+            media=media_paths,  # Stores: ["posts/file1.jpg", "posts/file2.jpg"]
             **validated_data
         )
         return post
-    
 
 class CommentReplySerializer(serializers.ModelSerializer):
     user = serializers.SerializerMethodField()
@@ -89,6 +86,7 @@ class CommentSerializer(serializers.ModelSerializer):
     def get_created_at(self, obj):
         return format_to_ist(obj.created_at)
 
+from django.core.files.storage import default_storage
 
 class PostSerializer(serializers.ModelSerializer):
     user = serializers.SerializerMethodField()
@@ -112,25 +110,33 @@ class PostSerializer(serializers.ModelSerializer):
         ]
 
     def get_media(self, obj):
-        """Convert stored relative paths into full URLs"""
-        request = self.context.get("request")
+        """Convert stored relative paths into full S3 URLs"""
         if not obj.media:
             return []
-        return [request.build_absolute_uri(settings.MEDIA_URL + path) for path in obj.media]
+        
+        # Use default_storage to build S3 URLs from relative paths
+        media_urls = []
+        for path in obj.media:
+            # default_storage.url() will generate full S3 URL
+            # e.g., posts/file.jpg -> https://bucket.s3.region.amazonaws.com/media/posts/file.jpg
+            full_url = default_storage.url(path)
+            media_urls.append(full_url)
+        
+        return media_urls
 
     def get_user(self, obj):
-        request = self.context.get("request")
         current_user = self.context.get("current_user")
         user = obj.user
 
         # If the post belongs to the logged-in user, show "You"
         full_name = "You" if current_user and user == current_user else user.full_name
 
-        profile_photo_url = (
-            request.build_absolute_uri(user.profile_photo.url)
-            if user.profile_photo
-            else None
-        )
+        # Handle profile photo URL properly
+        profile_photo_url = None
+        if user.profile_photo:
+            # If profile_photo is a FileField/ImageField stored on S3
+            profile_photo_url = user.profile_photo.url
+            # This will automatically use your S3 storage backend
 
         return {
             "id": user.id,
@@ -146,13 +152,13 @@ class PostSerializer(serializers.ModelSerializer):
 
     def get_is_liked(self, obj):
         user = self.context.get('request').user
-        return obj.likes.filter(user=user).exists()
+        if user and user.is_authenticated:
+            return obj.likes.filter(user=user).exists()
+        return False
 
     def get_created_at(self, obj):
         from dating_backend.timezone_utils import format_to_ist
         return format_to_ist(obj.created_at)
-
-
 
 class CommentSerializer(serializers.ModelSerializer):
     user = serializers.SerializerMethodField()
