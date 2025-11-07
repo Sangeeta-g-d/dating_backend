@@ -8,6 +8,10 @@ from swipe_feature.models import Match
 import uuid
 from django.core.files.storage import default_storage
 
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+import os
+
 class PostCreateSerializer(serializers.ModelSerializer):
     media = serializers.ListField(
         child=serializers.FileField(allow_empty_file=False, use_url=False),
@@ -25,22 +29,22 @@ class PostCreateSerializer(serializers.ModelSerializer):
         media_urls = []
 
         for file in media_files:
-            # Generate unique filename
-            ext = os.path.splitext(file.name)[1]
-            unique_filename = f"{uuid.uuid4().hex}{ext}"
+            # Generate unique filename to avoid conflicts
+            file_extension = os.path.splitext(file.name)[1]
+            file_name = f"{uuid.uuid4().hex}{file_extension}"
             
-            # Save to S3 (automatically uses your MediaStorage backend)
-            path = default_storage.save(f"posts/{unique_filename}", file)
+            # Upload to S3 using default_storage (your MediaStorage backend)
+            file_path = f"posts/{file_name}"
+            saved_path = default_storage.save(file_path, ContentFile(file.read()))
             
-            # Get full URL
-            url = default_storage.url(path)
-            media_urls.append(url)
+            # Get the full S3 URL
+            file_url = default_storage.url(saved_path)
+            media_urls.append(file_url)
 
-        # Create post with S3 URLs
         post = Post.objects.create(
-            user=user,
-            caption=validated_data.get('caption', ''),
-            media=media_urls
+            user=user, 
+            media=media_urls, 
+            **validated_data
         )
         return post
     
