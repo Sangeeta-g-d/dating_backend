@@ -58,35 +58,29 @@ class AddQuestionAPIView(APIView):
 class AddAnswerAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request):
-        serializer = AnswerCreateSerializer(data=request.data, context={'request': request})
+    def post(self, request, question_id):
+        # ✅ Check if question exists
+        try:
+            question = Question.objects.get(id=question_id)
+        except Question.DoesNotExist:
+            return Response({
+                "status": "404",
+                "message": "Question not found",
+                "Response": []
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # ✅ Attach question_id automatically
+        data = request.data.copy()
+        data["question_id"] = question_id
+
+        serializer = AnswerCreateSerializer(data=data, context={'request': request})
         if serializer.is_valid():
             answer = serializer.save()
 
-            # Serialize the answer
+            # ✅ Serialize with IST time formatting
             serialized_data = AnswerSerializer(answer, context={'request': request}).data
+            serialized_data["created_at"] = format_to_ist(answer.created_at)
 
-            # ✅ Format created_at (and updated_at if exists) to IST
-            if 'created_at' in serialized_data:
-                serialized_data['created_at'] = format_to_ist(answer.created_at)
-            if 'updated_at' in serialized_data:
-                serialized_data['updated_at'] = format_to_ist(getattr(answer, 'updated_at', None))
-
-            # ✅ Broadcast to connected clients viewing this question
-            # channel_layer = get_channel_layer()
-            # async_to_sync(channel_layer.group_send)(
-            #     f"askme_{answer.question.id}",
-            #     {
-            #         "type": "send_new_answer",
-            #         "data": {
-            #             "status": "200",
-            #             "message": "New answer added",
-            #             "Response": [serialized_data]
-            #         }
-            #     }
-            # )
-
-            # ✅ Return formatted response
             response_data = {
                 "status": "200",
                 "message": "Answer posted successfully",
@@ -94,14 +88,12 @@ class AddAnswerAPIView(APIView):
             }
             return Response(response_data, status=status.HTTP_201_CREATED)
 
-        else:
-            response_data = {
-                "status": "400",
-                "message": "Failed to post answer",
-                "Response": [serializer.errors] if serializer.errors else []
-            }
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
-        
+        return Response({
+            "status": "400",
+            "message": "Failed to post answer",
+            "Response": [serializer.errors]
+        }, status=status.HTTP_400_BAD_REQUEST)
+
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 10  # default items per page
