@@ -28,7 +28,7 @@ class AnswerSerializer(serializers.ModelSerializer):
         fields = ['id', 'question', 'text', 'is_anonymous', 'created_at', 'author_name']
 
     def get_author_name(self, obj):
-        return "Anonymous" if obj.is_anonymous else obj.author.username
+        return "Anonymous" if obj.is_anonymous else obj.author.full_name
 
 
 class AnswerCreateSerializer(serializers.ModelSerializer):
