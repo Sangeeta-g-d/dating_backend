@@ -1,0 +1,49 @@
+{% extends 'admin_base.html' %}
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4 text-center">All User Matches</h2>
+    
+    {% if matches %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped text-center align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>#</th>
+                    <th>User 1</th>
+                    <th>User 2</th>
+                    <th>Matched At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for match in matches %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>
+                        <div class="d-flex align-items-center justify-content-center">
+                            {% if match.user1.profile_photo %}
+                                <img src="{{ match.user1.profile_photo.url }}" class="rounded-circle me-2" width="40" height="40" style="object-fit:cover;">
+                            {% endif %}
+                            <span>{{ match.user1.full_name|default:match.user1.email }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center justify-content-center">
+                            {% if match.user2.profile_photo %}
+                                <img src="{{ match.user2.profile_photo.url }}" class="rounded-circle me-2" width="40" height="40" style="object-fit:cover;">
+                            {% endif %}
+                            <span>{{ match.user2.full_name|default:match.user2.email }}</span>
+                        </div>
+                    </td>
+                    <td>{{ match.matched_at|date:"d M Y, h:i A" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info text-center">
+        No matches found yet.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

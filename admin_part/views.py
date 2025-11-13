@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from .models import *
 from django.views.decorators.csrf import csrf_exempt
 from auth_api.models import CustomUser
+from swipe_feature.models import Match
 # Create your views here.
 
 def admin_dashboard(request):
@@ -145,3 +146,7 @@ def user_list(request):
 def logout_view(request):
     logout(request)
     return redirect('admin_login')
+
+def matches(request):
+    all_matches = Match.objects.select_related('user1', 'user2').order_by('-matched_at')
+    return render(request, 'matches.html', {'matches': all_matches})
