@@ -1,73 +1,90 @@
-import json
-from channels.generic.websocket import AsyncWebsocketConsumer
-from asgiref.sync import sync_to_async
+from channels.db import database_sync_to_async
+from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from django.utils import timezone
 
-class ChatConsumer(AsyncWebsocketConsumer):
+from .models import ChatRoom, MessageReceipt
+from dating_backend.timezone_utils import format_to_ist
+
+
+class ChatConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
-        self.room_name = self.scope['url_route']['kwargs']['room_name']
-        self.room_group_name = f"chat_{self.room_name}"
+        self.room_id = int(self.scope["url_route"]["kwargs"]["room_id"])
+        self.group_name = f"chat_{self.room_id}"
+        user = self.scope["user"]
 
-        # Join room group
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
+        if user.is_anonymous or not await self._user_belongs_to_room(user.id):
+            await self.close(code=4003)
+            return
+
+        await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
     async def disconnect(self, close_code):
-        # Leave room group
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
-    # Receive message from WebSocket
-    async def receive(self, text_data):
-        # Import inside method to avoid circular imports
-        from django.contrib.auth import get_user_model
-        from .models import ChatRoom, Message
-        from django.conf import settings
-        
-        User = get_user_model()
-        
-        data = json.loads(text_data)
-        message = data.get("message")
-        sender_id = data.get("sender_id")
+    async def receive_json(self, content, **kwargs):
+        action = content.get("action")
+        user = self.scope["user"]
 
-        sender = await sync_to_async(User.objects.get)(id=sender_id)
-        room = await sync_to_async(ChatRoom.objects.get)(id=self.room_name)
-        msg_obj = await sync_to_async(Message.objects.create)(room=room, sender=sender, content=message)
-
-        # Send message to room group
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                "type": "chat_message",
-                "message": message,
-                "sender_id": sender_id,
-                "timestamp": str(msg_obj.timestamp),
-            }
-        )
-
-        # Send push notification via FCM
-        await sync_to_async(self.send_push_notification)(room, sender, message)
-
-    # Receive message from room group
-    async def chat_message(self, event):
-        await self.send(text_data=json.dumps(event))
-
-    def send_push_notification(self, room, sender, message):
-        # Import inside method to avoid circular imports
-        from pyfcm import FCMNotification
-        from django.conf import settings
-        
-        # Send notification to other participants
-        push_service = FCMNotification(api_key=settings.FCM_SERVER_KEY)
-        recipients = room.participants.exclude(id=sender.id)
-        for user in recipients:
-            if hasattr(user, 'fcm_token') and user.fcm_token:  # store FCM token in User model
-                push_service.notify_single_device(
-                    registration_id=user.fcm_token,
-                    message_title=f"New message from {getattr(sender, 'full_name', sender.username)}",
-                    message_body=message
+        if action == "typing":
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "chat.typing",
+                    "payload": {
+                        "user_id": user.id,
+                        "is_typing": bool(content.get("is_typing")),
+                    },
+                },
+            )
+        elif action == "seen":
+            message_ids = content.get("message_ids") or []
+            payload = await self._mark_messages_seen(user.id, message_ids)
+            if payload:
+                await self.channel_layer.group_send(
+                    self.group_name,
+                    {"type": "chat.receipt", "payload": payload},
                 )
+        elif action == "ping":
+            await self.send_json({"event": "pong"})
+
+    async def chat_message(self, event):
+        await self.send_json({"event": "message", "data": event["payload"]})
+
+    async def chat_receipt(self, event):
+        await self.send_json({"event": "receipt", "data": event["payload"]})
+
+    async def chat_typing(self, event):
+        await self.send_json({"event": "typing", "data": event["payload"]})
+
+    @database_sync_to_async
+    def _user_belongs_to_room(self, user_id):
+        try:
+            room = ChatRoom.objects.only("user_a_id", "user_b_id").get(id=self.room_id)
+        except ChatRoom.DoesNotExist:
+            return False
+        return user_id in (room.user_a_id, room.user_b_id)
+
+    @database_sync_to_async
+    def _mark_messages_seen(self, user_id, message_ids):
+        qs = MessageReceipt.objects.filter(
+            message__room_id=self.room_id,
+            user_id=user_id,
+            seen_at__isnull=True,
+        )
+        if message_ids:
+            qs = qs.filter(message_id__in=message_ids)
+
+        now = timezone.now()
+        updated_ids = []
+        for receipt in qs:
+            receipt.delivered_at = receipt.delivered_at or now
+            receipt.seen_at = now
+            receipt.save(update_fields=["delivered_at", "seen_at"])
+            updated_ids.append(receipt.message_id)
+
+        if not updated_ids:
+            return None
+
+        return {"message_ids": updated_ids, "seen_at": format_to_ist(now), "user_id": user_id}
+

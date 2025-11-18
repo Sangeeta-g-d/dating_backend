@@ -67,15 +67,15 @@ class FetchStoriesAPIView(APIView, LimitOffsetPagination):
         # ✅ Logged-in user's active stories
         user_stories_qs = StoryModel.objects.filter(
             user=user, expires_at__gt=now
-        ).select_related("user").order_by("-created_at")
+        ).select_related("user")
 
         # ✅ Matched users' active stories
         matched_stories_qs = StoryModel.objects.filter(
             user__id__in=matched_user_ids, expires_at__gt=now
-        ).select_related("user").order_by("-created_at")
+        ).select_related("user")
 
         # ✅ Combine both for pagination
-        all_stories_qs = user_stories_qs.union(matched_stories_qs).order_by("-created_at")
+        all_stories_qs = user_stories_qs.union(matched_stories_qs)
         paginated_stories = self.paginate_queryset(all_stories_qs, request, view=self)
 
         # ✅ Serialize
