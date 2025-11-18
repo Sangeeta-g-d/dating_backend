@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Message, ChatRoom
-from django.utils import timezone
+from dating_backend.timezone_utils import format_to_ist  # Import the utility
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = serializers.SerializerMethodField()
@@ -31,14 +31,17 @@ class MessageSerializer(serializers.ModelSerializer):
         return obj.content  # This uses the @property decorator
 
     def get_created_at(self, obj):
-        """Format created_at timestamp"""
-        return obj.created_at.isoformat() if obj.created_at else None
+        """Format created_at timestamp using IST timezone"""
+        return format_to_ist(obj.created_at)
 
 
 class ChatRoomSerializer(serializers.ModelSerializer):
     participants = serializers.SerializerMethodField()
     last_message = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
+    updated_at = serializers.SerializerMethodField()
+    last_message_at = serializers.SerializerMethodField()
 
     class Meta:
         model = ChatRoom
@@ -91,3 +94,15 @@ class ChatRoomSerializer(serializers.ModelSerializer):
                 receipts__seen_at__isnull=True
             ).count()
         return 0
+
+    def get_created_at(self, obj):
+        """Format created_at timestamp using IST timezone"""
+        return format_to_ist(obj.created_at)
+
+    def get_updated_at(self, obj):
+        """Format updated_at timestamp using IST timezone"""
+        return format_to_ist(obj.updated_at)
+
+    def get_last_message_at(self, obj):
+        """Format last_message_at timestamp using IST timezone"""
+        return format_to_ist(obj.last_message_at)

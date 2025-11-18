@@ -56,8 +56,10 @@ class ChatRoomHistoryAPIView(APIView):
             response_data = {
                 "status": "200",
                 "message": "Chat fetched successfully" if not created else "New chat room created",
-                "room": room_serializer.data,
-                "messages": msg_serializer.data,
+                "Response": {
+                    "room": room_serializer.data,
+                    "messages": msg_serializer.data,
+                }
             }
             
             # Return paginated response
