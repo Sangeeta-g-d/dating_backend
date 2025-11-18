@@ -73,23 +73,13 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             if current_user and user.id == current_user.id:
                 return {
                     "id": user.id,
-                    "label": "you",
                     "full_name": "you",
-                    "email": user.email,
                     "profile_photo": profile_photo_url,
-                    "city": user.city,
-                    "state": user.state,
-                    "country": user.country,
                 }
             return {
                 "id": user.id,
-                "label": user.full_name or user.email,
                 "full_name": user.full_name,
-                "email": user.email,
                 "profile_photo": profile_photo_url,
-                "city": user.city,
-                "state": user.state,
-                "country": user.country,
             }
 
         return [format_user(user_a), format_user(user_b)]
