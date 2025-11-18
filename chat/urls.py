@@ -4,6 +4,5 @@ from .views import *
 
 
 urlpatterns = [
-    path('rooms/',ChatRoomHistoryAPIView.as_view(),name="rooms")
-
+    path('chat-history/<int:user_id>/', ChatRoomHistoryAPIView.as_view(), name='chat-history'),
 ]

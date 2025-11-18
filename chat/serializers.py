@@ -1,12 +1,11 @@
 from rest_framework import serializers
 from .models import Message, ChatRoom
-from dating_backend.timezone_utils import format_to_ist  # ✅ import the utility
-from rest_framework import serializers
-from .models import ChatRoom, Message
+from django.utils import timezone
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = serializers.SerializerMethodField()
-    content = serializers.CharField(source="content", read_only=True)
+    content = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
@@ -27,9 +26,19 @@ class MessageSerializer(serializers.ModelSerializer):
             return "you"
         return obj.sender.full_name or obj.sender.email
 
+    def get_content(self, obj):
+        """Return decrypted content"""
+        return obj.content  # This uses the @property decorator
+
+    def get_created_at(self, obj):
+        """Format created_at timestamp"""
+        return obj.created_at.isoformat() if obj.created_at else None
+
 
 class ChatRoomSerializer(serializers.ModelSerializer):
     participants = serializers.SerializerMethodField()
+    last_message = serializers.SerializerMethodField()
+    unread_count = serializers.SerializerMethodField()
 
     class Meta:
         model = ChatRoom
@@ -38,6 +47,9 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             "participants",
             "created_at",
             "updated_at",
+            "last_message_at",
+            "last_message",
+            "unread_count",
         ]
 
     def get_participants(self, obj):
@@ -62,3 +74,20 @@ class ChatRoomSerializer(serializers.ModelSerializer):
             }
 
         return [format_user(user_a), format_user(user_b)]
+
+    def get_last_message(self, obj):
+        """Get the last message in the chat room"""
+        last_message = obj.messages.order_by('-created_at').first()
+        if last_message:
+            return MessageSerializer(last_message, context=self.context).data
+        return None
+
+    def get_unread_count(self, obj):
+        """Get unread message count for current user"""
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            return obj.messages.exclude(sender=request.user).filter(
+                receipts__user=request.user,
+                receipts__seen_at__isnull=True
+            ).count()
+        return 0
