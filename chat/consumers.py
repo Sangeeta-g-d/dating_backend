@@ -2,8 +2,6 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
-from django.utils import timezone
-from chat.models import ChatRoom, Message, MessageReceipt
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -30,7 +28,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # ----------------- TYPING INDICATOR -----------------
         if msg_type == "typing":
             is_typing = data.get("is_typing", False)
-
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
@@ -41,7 +38,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
             return
 
-        # ------------ MESSAGE SEND LOGIC (your existing code) ------------
+        # ----------------- SEND MESSAGE -----------------
         if msg_type == "message":
             message_text = data.get("message")
             msg_obj = await self.save_message(message_text)
@@ -65,7 +62,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             msg_id = data.get("message_id")
             if msg_id:
                 receipt = await self.mark_as_seen(msg_id)
-
                 await self.channel_layer.group_send(
                     self.room_group_name,
                     {
@@ -77,7 +73,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 )
             return
 
-    # ----------------- EVENT HANDLERS -----------------
+    # ======================================================
+    #                   EVENT HANDLERS
+    # ======================================================
+
     async def typing_event(self, event):
         await self.send(text_data=json.dumps({
             "event": "typing",
@@ -91,29 +90,41 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def seen_event(self, event):
         await self.send(text_data=json.dumps(event))
 
-    # ---------------- DB Helpers (same as before) ----------------
+    # ======================================================
+    #                   DATABASE HELPERS
+    # ======================================================
+
     @database_sync_to_async
     def save_message(self, text):
+        from chat.models import ChatRoom, Message   # ✔ FIXED import here
+
         room = ChatRoom.objects.get(id=self.room_id)
-        msg = Message.objects.create(room=room, sender=self.user)
-        msg.content = text
-        msg.save()
-        return msg
+        return Message.objects.create(
+            room=room,
+            sender=self.user,
+            content=text
+        )
 
     @database_sync_to_async
     def create_receipts(self, message_obj):
+        from chat.models import ChatRoom, MessageReceipt  # ✔ FIXED import here
+
         room = ChatRoom.objects.get(id=self.room_id)
         participants = room.participants()
+
         for user in participants:
             receipt, _ = MessageReceipt.objects.get_or_create(
                 message=message_obj, user=user
             )
             if user.id == message_obj.sender_id:
                 receipt.mark_delivered()
+
         return True
 
     @database_sync_to_async
     def mark_as_seen(self, message_id):
+        from chat.models import MessageReceipt  # ✔ FIXED import here
+
         receipt = MessageReceipt.objects.get(message_id=message_id, user=self.user)
         receipt.mark_seen()
         return receipt
