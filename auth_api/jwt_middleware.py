@@ -2,16 +2,18 @@ from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.authentication import JWTAuthentication
 import urllib.parse
 from channels.db import database_sync_to_async
+from channels.middleware import BaseMiddleware
 
 
-class JWTAuthMiddleware:
+class JWTAuthMiddleware(BaseMiddleware):
     """ASGI middleware that populates `scope['user']` from a JWT token."""
-
-    def __init__(self, app):
-        self.app = app
 
     async def __call__(self, scope, receive, send):
         token = None
+
+        # Only process websocket connections
+        if scope["type"] != "websocket":
+            return await super().__call__(scope, receive, send)
 
         # 1) Try query string: ?token=...
         query_string = scope.get("query_string", b"").decode()
@@ -34,12 +36,13 @@ class JWTAuthMiddleware:
                 validated_token = jwt_auth.get_validated_token(token)
                 user = await self.get_user(validated_token)
                 scope["user"] = user
-            except Exception:
+            except Exception as e:
+                print(f"JWT validation error: {e}")
                 scope["user"] = AnonymousUser()
         else:
             scope["user"] = AnonymousUser()
 
-        return await self.app(scope, receive, send)
+        return await super().__call__(scope, receive, send)
 
     @database_sync_to_async
     def get_user(self, validated_token):
