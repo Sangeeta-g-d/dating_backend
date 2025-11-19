@@ -46,6 +46,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "typing_event",
                     "user_id": self.user.id,
+                    "user_name": getattr(self.user, 'full_name', ''),
                     "is_typing": is_typing,
                 }
             )
@@ -65,6 +66,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "message_id": msg_obj.id,
                     "message": msg_obj.content,
                     "sender_id": self.user.id,
+                    "sender_name": getattr(self.user, 'full_name', ''),
                     "timestamp": msg_obj.created_at.isoformat(),
                 }
             )
@@ -81,6 +83,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         "type": "seen_event",
                         "message_id": msg_id,
                         "user_id": self.user.id,
+                        "user_name": getattr(self.user, 'full_name', ''),
                         "seen_at": receipt.seen_at.isoformat(),
                     }
                 )
@@ -94,6 +97,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             "event": "typing",
             "user_id": event["user_id"],
+            "user_name": event.get("user_name", ""),
             "is_typing": event["is_typing"],
         }))
 
