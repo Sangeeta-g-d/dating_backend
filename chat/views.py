@@ -257,20 +257,18 @@ class DeleteMessagesAPIView(APIView):
                 "Response": {}
             }, status=404)
 
-        # Mark messages as deleted
+        # Mark as deleted
         messages.update(is_deleted=True, updated_at=timezone.now())
 
-        # Prepare response data
-        deleted_payload = []
-        for msg in messages:
-            deleted_payload.append({
-                "id": msg.id,
-                "room_id": room_id,
-                "is_deleted": True,
-                "deleted_at": format_to_ist(timezone.now())
-            })
+        # Prepare deleted payload
+        deleted_ids = [m.id for m in messages]
 
-        # Broadcast delete event to WebSocket
+        deleted_payload = {
+            "type": "delete_message",
+            "deleted_message_ids": deleted_ids,
+        }
+
+        # Broadcast via WebSocket
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             f"chat_{room_id}",
@@ -280,9 +278,8 @@ class DeleteMessagesAPIView(APIView):
             }
         )
 
-        # Final API Response
         return Response({
             "status": 200,
             "message": "Message(s) deleted successfully",
-            "Response": deleted_payload,
-        }, status=200)
+            "Response": deleted_payload
+        })
