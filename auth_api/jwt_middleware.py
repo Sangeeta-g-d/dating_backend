@@ -49,7 +49,9 @@ class JWTAuthMiddleware:
                 validated_token = jwt_auth.get_validated_token(token)
                 user = await self.get_user(validated_token)
                 scope["user"] = user
-                logger.info(f"User authenticated: {user.id} - {user.username}")
+                # Use email instead of username for CustomUser model
+                user_identifier = getattr(user, 'email', getattr(user, 'id', 'unknown'))
+                logger.info(f"User authenticated: {user.id} - {user_identifier}")
             except Exception as e:
                 logger.error(f"JWT validation error: {e}")
                 scope["user"] = AnonymousUser()
