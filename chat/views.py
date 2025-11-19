@@ -220,3 +220,69 @@ class MediaMessageUploadAPIView(APIView):
             "message": "Media message sent successfully",
             "Response": message_data,
         }, status=200)
+
+
+
+class DeleteMessagesAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, room_id):
+        user = request.user
+
+        message_ids = request.data.get("message_ids", [])
+        if not isinstance(message_ids, list) or len(message_ids) == 0:
+            return Response({
+                "status": 400,
+                "message": "message_ids must be a non-empty list",
+                "Response": {}
+            }, status=400)
+
+        # Validate Chat Room
+        try:
+            room = ChatRoom.objects.get(id=room_id)
+        except ChatRoom.DoesNotExist:
+            return Response({
+                "status": 404,
+                "message": "Chat room not found",
+                "Response": {}
+            }, status=404)
+
+        # Fetch messages
+        messages = Message.objects.filter(id__in=message_ids, room=room)
+
+        if not messages.exists():
+            return Response({
+                "status": 404,
+                "message": "No messages found for deletion",
+                "Response": {}
+            }, status=404)
+
+        # Mark messages as deleted
+        messages.update(is_deleted=True, updated_at=timezone.now())
+
+        # Prepare response data
+        deleted_payload = []
+        for msg in messages:
+            deleted_payload.append({
+                "id": msg.id,
+                "room_id": room_id,
+                "is_deleted": True,
+                "deleted_at": format_to_ist(timezone.now())
+            })
+
+        # Broadcast delete event to WebSocket
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"chat_{room_id}",
+            {
+                "type": "chat.delete",
+                "data": deleted_payload
+            }
+        )
+
+        # Final API Response
+        return Response({
+            "status": 200,
+            "message": "Message(s) deleted successfully",
+            "Response": deleted_payload,
+        }, status=200)

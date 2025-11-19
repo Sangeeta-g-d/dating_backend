@@ -114,6 +114,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "data": event["message"]
         }))
 
+    async def chat_delete(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "delete_message",
+            "data": event["data"],
+        }))
+
     # ======================================================
     #                   DATABASE HELPERS
     # ======================================================
