@@ -2,6 +2,7 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
+from django.contrib.auth.models import AnonymousUser
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -11,8 +12,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.room_group_name = f"chat_{self.room_id}"
         self.user = self.scope["user"]
 
-        if not self.user.is_authenticated:
-            await self.close()
+        if isinstance(self.user, AnonymousUser) or not self.user.is_authenticated:
+            await self.close(code=4001)  # Custom close code for authentication failure
+            return
+        
+        if not await self.has_room_access():
+            await self.close(code=4003)  # Custom close code for room access denied
             return
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
@@ -94,6 +99,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
     #                   DATABASE HELPERS
     # ======================================================
 
+    @database_sync_to_async
+    def has_room_access(self):
+        from chat.models import ChatRoom
+        try:
+            room = ChatRoom.objects.get(id=self.room_id)
+            return self.user in [room.user_a, room.user_b]
+        except ChatRoom.DoesNotExist:
+            return False
+        
+        
     @database_sync_to_async
     def save_message(self, text):
         from chat.models import ChatRoom, Message   # ✔ FIXED import here
