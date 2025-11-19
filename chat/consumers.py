@@ -107,6 +107,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def seen_event(self, event):
         await self.send(text_data=json.dumps(event))
 
+
+    async def chat_message(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "media_message",
+            "data": event["message"]
+        }))
+
     # ======================================================
     #                   DATABASE HELPERS
     # ======================================================
