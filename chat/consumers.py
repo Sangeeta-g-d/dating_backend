@@ -1,8 +1,10 @@
-# chat/consumers.py
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -12,18 +14,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.room_group_name = f"chat_{self.room_id}"
         self.user = self.scope["user"]
 
+        logger.info(f"WebSocket connection attempt - Room: {self.room_id}, User: {self.user}")
+
         if isinstance(self.user, AnonymousUser) or not self.user.is_authenticated:
+            logger.warning(f"Authentication failed - User is anonymous or not authenticated")
             await self.close(code=4001)  # Custom close code for authentication failure
             return
         
         if not await self.has_room_access():
+            logger.warning(f"Room access denied - User {self.user.id} cannot access room {self.room_id}")
             await self.close(code=4003)  # Custom close code for room access denied
             return
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
+        logger.info(f"WebSocket connection accepted - User {self.user.id} in room {self.room_id}")
 
     async def disconnect(self, close_code):
+        logger.info(f"WebSocket disconnected - Code: {close_code}")
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
     async def receive(self, text_data):
@@ -104,14 +112,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
         from chat.models import ChatRoom
         try:
             room = ChatRoom.objects.get(id=self.room_id)
-            return self.user in [room.user_a, room.user_b]
+            has_access = self.user in [room.user_a, room.user_b]
+            logger.info(f"Room access check - Room {self.room_id}, User {self.user.id}, Access: {has_access}")
+            return has_access
         except ChatRoom.DoesNotExist:
+            logger.error(f"Room {self.room_id} does not exist")
             return False
-        
         
     @database_sync_to_async
     def save_message(self, text):
-        from chat.models import ChatRoom, Message   # ✔ FIXED import here
+        from chat.models import ChatRoom, Message
 
         room = ChatRoom.objects.get(id=self.room_id)
         return Message.objects.create(
@@ -122,7 +132,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def create_receipts(self, message_obj):
-        from chat.models import ChatRoom, MessageReceipt  # ✔ FIXED import here
+        from chat.models import ChatRoom, MessageReceipt
 
         room = ChatRoom.objects.get(id=self.room_id)
         participants = room.participants()
@@ -138,7 +148,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def mark_as_seen(self, message_id):
-        from chat.models import MessageReceipt  # ✔ FIXED import here
+        from chat.models import MessageReceipt
 
         receipt = MessageReceipt.objects.get(message_id=message_id, user=self.user)
         receipt.mark_seen()

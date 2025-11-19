@@ -2,6 +2,9 @@ from django.contrib.auth.models import AnonymousUser
 from rest_framework_simplejwt.authentication import JWTAuthentication
 import urllib.parse
 from channels.db import database_sync_to_async
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class JWTAuthMiddleware:
@@ -19,17 +22,25 @@ class JWTAuthMiddleware:
 
         # 1) Try query string: ?token=...
         query_string = scope.get("query_string", b"").decode()
+        logger.info(f"Query string: {query_string}")
         if query_string:
             qs = urllib.parse.parse_qs(query_string)
             if "token" in qs:
                 token = qs["token"][0]
+                logger.info(f"Token found in query string: {token[:20]}...")
 
         # 2) Try Authorization header: "Authorization: Bearer <token>"
         if not token:
-            headers = {k.decode(): v.decode() for k, v in scope.get("headers", [])}
-            auth = headers.get("authorization") or headers.get("Authorization")
-            if auth and auth.startswith("Bearer "):
-                token = auth.split(" ", 1)[1]
+            headers = dict(scope.get("headers", []))
+            logger.info(f"Headers: {headers}")
+            for key, value in headers.items():
+                key_str = key.decode() if isinstance(key, bytes) else key
+                value_str = value.decode() if isinstance(value, bytes) else value
+                if key_str.lower() == "authorization":
+                    if value_str.startswith("Bearer "):
+                        token = value_str.split(" ", 1)[1]
+                        logger.info(f"Token found in header: {token[:20]}...")
+                    break
 
         # Validate token and set user
         if token:
@@ -38,11 +49,12 @@ class JWTAuthMiddleware:
                 validated_token = jwt_auth.get_validated_token(token)
                 user = await self.get_user(validated_token)
                 scope["user"] = user
+                logger.info(f"User authenticated: {user.id} - {user.username}")
             except Exception as e:
-                print(f"JWT validation error: {e}")
+                logger.error(f"JWT validation error: {e}")
                 scope["user"] = AnonymousUser()
         else:
-            print("No token provided")
+            logger.warning("No token provided in request")
             scope["user"] = AnonymousUser()
 
         return await self.app(scope, receive, send)
