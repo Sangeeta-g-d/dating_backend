@@ -12,10 +12,6 @@ class ChatRoomHistoryAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_room(self, user1, user2):
-        """
-        Get or create a chat room between two users.
-        Users are sorted by ID to ensure consistent room creation.
-        """
         user_a, user_b = sorted([user1, user2], key=lambda x: x.id)
         room, created = ChatRoom.objects.get_or_create(
             user_a=user_a,
@@ -24,47 +20,48 @@ class ChatRoomHistoryAPIView(APIView):
         return room, created
 
     def get(self, request, user_id):
-        """
-        Fetch chat history with another user.
-        Creates a new chat room if one doesn't exist.
-        """
         try:
             current_user = request.user
             other_user = get_object_or_404(CustomUser, id=user_id)
-            
-            # Prevent users from creating rooms with themselves
+
             if current_user.id == other_user.id:
                 return Response({
                     "status": "400",
                     "message": "Cannot create chat room with yourself"
                 }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Get or create chat room
+
             room, created = self.get_room(current_user, other_user)
-            
-            # Fetch messages ordered by creation date (oldest first for pagination)
+
+            # Fetch messages oldest → newest
             messages = Message.objects.filter(room=room).order_by("created_at")
-            
-            # Paginate results
+
             paginator = StandardResultsPagination()
             paginated_messages = paginator.paginate_queryset(messages, request)
-            
-            # Serialize data
-            room_serializer = ChatRoomSerializer(room, context={"request": request})
-            msg_serializer = MessageSerializer(paginated_messages, many=True, context={"request": request})
-            
+
+            # Only serialize messages
+            msg_serializer = MessageSerializer(
+                paginated_messages,
+                many=True,
+                context={"request": request}
+            )
+
+            # ⛔ DO NOT USE ChatRoomSerializer HERE
+            # Instead, return only room ID
+            room_data = {
+                "id": room.id
+            }
+
             response_data = {
                 "status": "200",
                 "message": "Chat fetched successfully" if not created else "New chat room created",
                 "Response": {
-                    "room": room_serializer.data,
+                    "room": room_data,
                     "messages": msg_serializer.data,
                 }
             }
-            
-            # Return paginated response
+
             return paginator.get_paginated_response(response_data)
-            
+
         except Exception as e:
             return Response({
                 "status": "500",
