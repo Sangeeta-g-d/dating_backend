@@ -228,6 +228,8 @@ from .models import ChatRoom, Message
 
 logger = logging.getLogger(__name__)
 
+
+@method_decorator(csrf_exempt, name='dispatch')
 class DeleteMessagesAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
