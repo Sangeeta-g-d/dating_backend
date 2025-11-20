@@ -12,6 +12,8 @@ from django.db.models import Q
 from django.utils import timezone
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
 class ChatRoomHistoryAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -222,6 +224,7 @@ class MediaMessageUploadAPIView(APIView):
         }, status=200)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class DeleteMessagesAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
