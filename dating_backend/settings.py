@@ -51,6 +51,13 @@ INSTALLED_APPS = [
 
 AUTH_USER_MODEL = 'auth_api.CustomUser'
 
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    "https://luxmivox.app"
+    # Add your production domains
+]
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
