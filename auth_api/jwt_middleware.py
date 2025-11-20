@@ -65,3 +65,14 @@ class JWTAuthMiddleware:
     def get_user(self, validated_token):
         jwt_auth = JWTAuthentication()
         return jwt_auth.get_user(validated_token)
+
+
+class DisableCSRFForAPIMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Disable CSRF for API endpoints
+        if request.path.startswith('/chat/') or request.path.startswith('/api/'):
+            setattr(request, '_dont_enforce_csrf_checks', True)
+        return self.get_response(request)
