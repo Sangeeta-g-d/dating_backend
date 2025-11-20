@@ -12,8 +12,6 @@ from django.db.models import Q
 from django.utils import timezone
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 
 class ChatRoomHistoryAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -223,122 +221,48 @@ class MediaMessageUploadAPIView(APIView):
             "Response": message_data,
         }, status=200)
 
-import logging
-from .models import ChatRoom, Message
-
-logger = logging.getLogger(__name__)
-
-
 
 class DeleteMessagesAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, room_id):
-        user = request.user
+    def delete(self, request):
         message_ids = request.data.get("message_ids", [])
-        
-        # Log the request for debugging
-        logger.info(f"Delete request from user {user.id} ({user.email}) for room {room_id}")
-        logger.info(f"Message IDs to delete: {message_ids}")
 
-        # Validate message_ids parameter
-        if not isinstance(message_ids, list) or len(message_ids) == 0:
-            return Response({
-                "status": 400,
-                "message": "message_ids must be a non-empty list",
-                "Response": {}
-            }, status=400)
+        # Convert single ID → list automatically
+        if isinstance(message_ids, int):
+            message_ids = [message_ids]
 
-        # Validate that all message_ids are integers
-        try:
-            message_ids = [int(msg_id) for msg_id in message_ids]
-        except (ValueError, TypeError):
-            return Response({
-                "status": 400,
-                "message": "All message_ids must be valid integers",
-                "Response": {}
-            }, status=400)
+        if not isinstance(message_ids, list) or not message_ids:
+            return Response({"error": "message_ids must be a list"}, status=400)
 
-        try:
-            # Verify user is a participant in the chat room
-            room = ChatRoom.objects.get(
-                Q(user_a=user) | Q(user_b=user),
-                id=room_id
-            )
-            logger.info(f"User {user.id} authorized for room {room_id}")
-            
-        except ChatRoom.DoesNotExist:
-            logger.warning(f"User {user.id} attempted to access room {room_id} without authorization")
-            return Response({
-                "status": 403,
-                "message": "You are not a participant in this chat room or room does not exist",
-                "Response": {}
-            }, status=403)
-
-        # Fetch only the messages that belong to the user in this specific room
-        messages = Message.objects.filter(
-            id__in=message_ids,
-            room=room,
-            sender=user  # Users can only delete their own messages
-        )
+        # Fetch only user's own messages
+        messages = Message.objects.filter(id__in=message_ids, sender=request.user)
 
         if not messages.exists():
-            logger.warning(f"No messages found for deletion by user {user.id} in room {room_id}")
-            return Response({
-                "status": 404,
-                "message": "No messages found for deletion. You can only delete your own messages.",
-                "Response": {}
-            }, status=404)
+            return Response({"error": "No deletable messages found"}, status=404)
 
-        # Get the message IDs before deletion for the response
-        found_message_ids = list(messages.values_list('id', flat=True))
-        
-        # Check if any requested messages weren't found (not owned by user or don't exist)
-        not_found_ids = set(message_ids) - set(found_message_ids)
-        if not_found_ids:
-            logger.info(f"User {user.id} attempted to delete non-owned messages: {not_found_ids}")
+        room_id = messages.first().room_id  # All messages belong to same room in 1v1 chat
 
-        # Mark messages as deleted
-        update_count = messages.update(is_deleted=True, updated_at=timezone.now())
-        logger.info(f"Marked {update_count} messages as deleted by user {user.id}")
+        # Delete media + receipts
+        for msg in messages:
+            MessageReceipt.objects.filter(message=msg).delete()
+            if msg.media:
+                msg.media.delete(save=False)
 
-        # Prepare WebSocket payload
-        deleted_payload = {
-            "type": "delete_message",
-            "deleted_message_ids": found_message_ids,
-            "deleted_by": user.id,
-            "room_id": room_id,
-            "timestamp": timezone.now().isoformat()
-        }
+        # Finally delete messages
+        messages.delete()
 
-        # Broadcast deletion via WebSocket to all room participants
-        try:
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                f"chat_{room_id}",
-                {
-                    "type": "chat.delete",
-                    "data": deleted_payload
+        # WebSocket broadcast
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"chat_{room_id}",
+            {
+                "type": "chat_delete",
+                "data": {
+                    "event": "messages_deleted",
+                    "message_ids": message_ids,
                 }
-            )
-            logger.info(f"Broadcasted deletion of {len(found_message_ids)} messages to room {room_id}")
-        except Exception as e:
-            logger.error(f"Failed to broadcast deletion via WebSocket: {str(e)}")
-            # Don't fail the request if WebSocket fails, just log it
-
-        # Prepare response
-        response_data = {
-            "status": 200,
-            "message": f"Successfully deleted {len(found_message_ids)} message(s)",
-            "Response": {
-                "deleted_message_ids": found_message_ids,
-                "room_id": room_id,
-                "not_found_or_unauthorized": list(not_found_ids) if not_found_ids else []
             }
-        }
+        )
 
-        # Add warning if some messages couldn't be deleted
-        if not_found_ids:
-            response_data["message"] += f". {len(not_found_ids)} message(s) could not be deleted (not found or not owned by you)"
-
-        return Response(response_data, status=200)
+        return Response({"message": "Messages deleted"}, status=200)
