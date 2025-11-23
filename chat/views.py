@@ -211,7 +211,7 @@ class MediaMessageUploadAPIView(APIView):
         async_to_sync(channel_layer.group_send)(
             f"chat_{room_id}",
             {
-                "type": "chat.message",
+                "type": "media_message",
                 "message": message_data,
             }
         )

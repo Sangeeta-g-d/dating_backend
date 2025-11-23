@@ -55,7 +55,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # ----------------- SEND MESSAGE -----------------
         if msg_type == "message":
             message_text = data.get("message")
-            msg_obj = await self.save_message(message_text)
+            reply_to_id = data.get("reply_to")
+
+            msg_obj = await self.save_message(message_text, reply_to_id)
             await self.create_receipts(msg_obj)
 
             await self.channel_layer.group_send(
@@ -67,27 +69,34 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "message": msg_obj.content,
                     "sender_id": self.user.id,
                     "sender_name": getattr(self.user, 'full_name', ''),
+                    "reply_to": reply_to_id,
                     "timestamp": msg_obj.created_at.isoformat(),
                 }
             )
             return
 
+
         # ----------------- MARK SEEN -----------------
         if msg_type == "seen":
-            msg_id = data.get("message_id")
-            if msg_id:
-                receipt = await self.mark_as_seen(msg_id)
-                await self.channel_layer.group_send(
-                    self.room_group_name,
-                    {
-                        "type": "seen_event",
-                        "message_id": msg_id,
-                        "user_id": self.user.id,
-                        "user_name": getattr(self.user, 'full_name', ''),
-                        "seen_at": receipt.seen_at.isoformat(),
-                    }
-                )
+            message_ids = data.get("message_ids", [])
+
+            if isinstance(message_ids, int):  
+                message_ids = [message_ids]
+
+            seen_list = await self.mark_multiple_as_seen(message_ids)
+
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    "type": "seen_event",
+                    "message_ids": message_ids,
+                    "user_id": self.user.id,
+                    "user_name": getattr(self.user, 'full_name', ''),
+                    "seen_at": seen_list["timestamp"],
+                }
+            )
             return
+
 
     # ======================================================
     #                   EVENT HANDLERS
@@ -108,7 +117,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps(event))
 
 
-    async def chat_message(self, event):
+    async def media_message(self, event):
         await self.send(text_data=json.dumps({
             "type": "media_message",
             "data": event["message"]
@@ -134,15 +143,27 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return False
         
     @database_sync_to_async
-    def save_message(self, text):
+    def save_message(self, text, reply_to_id=None):
         from chat.models import ChatRoom, Message
-
+    
         room = ChatRoom.objects.get(id=self.room_id)
-        return Message.objects.create(
+    
+        reply_obj = None
+        if reply_to_id:
+            try:
+                reply_obj = Message.objects.get(id=reply_to_id, room=room)
+            except Message.DoesNotExist:
+                reply_obj = None
+    
+        msg = Message(
             room=room,
             sender=self.user,
-            content=text
+            reply_to=reply_obj
         )
+        msg.content = text  # encryption handled in setter
+        msg.save()
+        return msg
+
 
     @database_sync_to_async
     def create_receipts(self, message_obj):
@@ -161,9 +182,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return True
 
     @database_sync_to_async
-    def mark_as_seen(self, message_id):
+    def mark_multiple_as_seen(self, message_ids):
         from chat.models import MessageReceipt
-
-        receipt = MessageReceipt.objects.get(message_id=message_id, user=self.user)
-        receipt.mark_seen()
-        return receipt
+        from django.utils import timezone
+    
+        timestamp = timezone.now()
+    
+        for mid in message_ids:
+            try:
+                receipt = MessageReceipt.objects.get(message_id=mid, user=self.user)
+                receipt.seen_at = timestamp
+                receipt.save()
+            except MessageReceipt.DoesNotExist:
+                pass
+            
+        return {"timestamp": timestamp.isoformat()}
+    
