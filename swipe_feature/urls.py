@@ -13,4 +13,5 @@ urlpatterns = [
     path('match-request-action/<int:swipe_id>/', SwipeActionAPIView.as_view(), name='match-request-action'),
     # Get list of confirmed matches
     path('matches/', MatchedUsersListAPIView.as_view(), name='matched-users-list'),
+    path("unmatch/<int:matched_user_id>/", UnmatchAPIView.as_view(), name="unmatch-user"),
 ]

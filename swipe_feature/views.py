@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from .serializers import *
 from django.utils import timezone
 from random import sample
-
+from django.db.models import Q
 User = get_user_model()
 # Create your views here.
 
@@ -358,3 +358,58 @@ class MatchedUsersListAPIView(APIView):
                 "Response": []
             }
             return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UnmatchAPIView(APIView):
+    """
+    Unmatch a user with whom the logged-in user has a mutual match.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, matched_user_id):
+        try:
+            user = request.user
+
+            # Check if match exists between user and matched_user_id
+            match = Match.objects.filter(
+                Q(user1_id=user.id, user2_id=matched_user_id) |
+                Q(user1_id=matched_user_id, user2_id=user.id)
+            ).first()
+
+            if not match:
+                return Response(
+                    {
+                        "status": "404",
+                        "message": "Match not found.",
+                        "Response": {}
+                        },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Delete match
+            match.delete()
+
+            # OPTIONAL: Clear related swipe data so they can swipe again later
+            Swipe.objects.filter(
+                Q(from_user=user, to_user_id=matched_user_id) |
+                Q(from_user_id=matched_user_id, to_user=user)
+            ).delete()
+
+            return Response(
+                {
+                    "status": "200",
+                    "message": "Successfully unmatched.",
+                    "Response": {}
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            return Response(
+                {
+                    "status": "500",
+                    "message": f"Unexpected error: {str(e)}",
+                    "Response": {}
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
