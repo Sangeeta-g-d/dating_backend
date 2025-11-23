@@ -6,7 +6,7 @@ from django.utils import timezone
 from rest_framework.pagination import LimitOffsetPagination
 from datetime import timedelta
 from .models import StoryView, StoryModel
-from .serializers import StorySerializer
+from .serializers import StorySerializer,FetchStorySerializer,StoryViewerSerializer
 from dating_backend.timezone_utils import format_to_ist
 from swipe_feature.models import Match
 from django.db.models import Q, Prefetch
@@ -79,7 +79,7 @@ class FetchStoriesAPIView(APIView, LimitOffsetPagination):
         paginated_stories = self.paginate_queryset(all_stories_qs, request, view=self)
 
         # ✅ Serialize
-        serializer = StorySerializer(paginated_stories, many=True, context={'request': request})
+        serializer = FetchStorySerializer(paginated_stories, many=True, context={'request': request})
         stories_data = serializer.data
 
         # ✅ Optimize view check (1 query instead of N)
@@ -94,8 +94,10 @@ class FetchStoriesAPIView(APIView, LimitOffsetPagination):
 
         for story_data, story_obj in zip(stories_data, paginated_stories):
             if story_obj.user == user:
+                story_data["views_count"] = story_obj.views.count()
                 your_stories.append(story_data)
             else:
+                story_data.pop("views_count", None)  # 🔥 remove it for other users
                 story_data["is_viewed"] = story_obj.id in viewed_story_ids
                 matched_stories.append(story_data)
 
@@ -180,3 +182,39 @@ class DeleteStoryAPIView(APIView):
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+
+class StoryViewersAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, story_id):
+        user = request.user
+
+        # Check valid story
+        story = get_object_or_404(StoryModel, id=story_id)
+
+        # Ensure story belongs to logged-in user
+        if story.user != user:
+            return Response({
+                "status": "403",
+                "message": "You are not allowed to view viewers of this story",
+                "Response": []
+            }, status=403)
+
+        # Fetch viewers (latest first)
+        viewer_entries = StoryView.objects.filter(story=story).select_related("user").order_by("-viewed_at")
+        viewers = [entry.user for entry in viewer_entries]
+
+        serializer = StoryViewerSerializer(viewers, many=True, context={"request": request})
+
+        response_data = {
+            "status": "200",
+            "message": f"Story viewers fetched successfully for story ID {story_id}",
+            "Response": {
+                "total_views": len(viewers),
+                "viewers": serializer.data
+            },
+        }
+
+        return Response(response_data, status=200)
