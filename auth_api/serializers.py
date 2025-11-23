@@ -185,3 +185,22 @@ class PostSerializer(serializers.ModelSerializer):
                 else:
                     full_urls.append(f"{settings.MEDIA_URL}{m}")
         return full_urls
+    
+
+# search API
+class UserSearchSerializer(serializers.ModelSerializer):
+    profile_photo = serializers.SerializerMethodField()
+    age = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = ["id", "full_name", "profile_photo", "age"]
+
+    def get_profile_photo(self, obj):
+        request = self.context.get("request")
+        if obj.profile_photo:
+            return request.build_absolute_uri(obj.profile_photo.url)
+        return None
+
+    def get_age(self, obj):
+        return obj.profile.age if hasattr(obj, "profile") else None

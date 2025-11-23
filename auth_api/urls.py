@@ -13,4 +13,7 @@ urlpatterns = [
     path('user_profile/', UserDetailsProfileAPIView.as_view(), name='user_profile'),
     path('user-post/', UserFeedAPIView.as_view(), name='user_posts'),
     path('user-post/<int:pk>/', UserFeedAPIView.as_view(), name='delete-post'),
+
+
+    path('search-users/', UserSearchAPIView.as_view(), name='search_users'),
 ]

@@ -516,3 +516,61 @@ class UserFeedAPIView(APIView):
             "message": "Post deleted successfully",
             "Response": []
         }, status=status.HTTP_200_OK)
+    
+
+# search
+class UserSearchAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        search = request.GET.get("search", "")
+        religion = request.GET.get("religion", "")
+        looking_for = request.GET.get("looking_for", "")
+        gender = request.GET.get("gender", "")
+
+        min_age = request.GET.get("min_age")
+        max_age = request.GET.get("max_age")
+
+        queryset = CustomUser.objects.select_related("profile").all()
+
+        # --- Search by full_name ---
+        if search:
+            queryset = queryset.filter(full_name__icontains=search)
+
+        # --- Filter by religion ---
+        if religion:
+            queryset = queryset.filter(profile__religion__iexact=religion)
+
+        # --- Filter by looking_for ---
+        if looking_for:
+            queryset = queryset.filter(profile__looking_for__iexact=looking_for)
+
+        # --- Filter by gender ---
+        if gender:
+            queryset = queryset.filter(profile__gender__iexact=gender)
+
+        # -------- AGE RANGE FILTERING --------
+        from datetime import date, timedelta
+        today = date.today()
+
+        if max_age:
+            max_age = int(max_age)
+            max_birthdate = date(today.year - max_age, today.month, today.day)
+            queryset = queryset.filter(profile__date_of_birth__lte=max_birthdate)
+
+        if min_age:
+            min_age = int(min_age)
+            min_birthdate = date(today.year - min_age - 1, today.month, today.day) + timedelta(days=1)
+            queryset = queryset.filter(profile__date_of_birth__gte=min_birthdate)
+
+        # -------------------------------------
+
+        serializer = UserSearchSerializer(
+            queryset, many=True, context={"request": request}
+        )
+
+        return Response({
+            "status": "200",
+            "message": "Users fetched successfully",
+            "Response": serializer.data,
+        })
