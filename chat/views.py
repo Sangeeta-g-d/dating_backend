@@ -40,7 +40,7 @@ class ChatRoomHistoryAPIView(APIView):
             room, created = self.get_room(current_user, other_user)
 
             # Fetch messages oldest → newest
-            messages = Message.objects.filter(room=room).order_by("created_at")
+            messages = Message.objects.filter(room=room).order_by("-created_at")
 
             paginator = StandardResultsPagination()
             paginated_messages = paginator.paginate_queryset(messages, request)
