@@ -24,5 +24,5 @@ def format_to_ist(utc_datetime):
     ist_datetime = utc_datetime.astimezone(ist_tz)
 
     # Format as a human-readable string
-    formatted = ist_datetime.strftime("%d %b %Y, %I:%M %p IST")
+    formatted = ist_datetime.strftime("%d %b %Y, %I:%M %p")
     return formatted
