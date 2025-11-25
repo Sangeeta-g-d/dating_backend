@@ -147,7 +147,7 @@ class UserProfile(models.Model):
     )
 
     date_of_birth = models.DateField(blank=True, null=True)
-    height = models.DecimalField(max_digits=4, decimal_places=1, blank=True, null=True, help_text="Height in cm")
+    height = models.DecimalField(max_digits=6, decimal_places=1, blank=True, null=True, help_text="Height in cm")
     marital_status = models.CharField(
         max_length=20, choices=MARITAL_STATUS_CHOICES, blank=True, null=True
     )
