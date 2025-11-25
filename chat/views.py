@@ -76,43 +76,35 @@ class ChatRoomHistoryAPIView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
 class InboxUserListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
 
-        # Fetch chatrooms where current user is a participant
+        # Fetch only chatrooms where a message exists
         chatrooms = ChatRoom.objects.filter(
-            Q(user_a=user) | Q(user_b=user)
-        ).order_by("-last_message_at")
+            (Q(user_a=user) | Q(user_b=user)),
+            messages__isnull=False
+        ).distinct().order_by("-last_message_at")
 
         inbox_list = []
 
         for room in chatrooms:
-            # Determine the other participant
             other_user = room.user_b if room.user_a == user else room.user_a
 
-            # Last message
             last_msg = room.messages.order_by("-created_at").first()
 
             if last_msg:
-                if last_msg.media:
-                    last_message_text = "Media"
-                else:
-                    last_message_text = last_msg.content or ""
-                
+                last_message_text = "Media" if last_msg.media else last_msg.content or ""
                 last_message_time = format_to_ist(last_msg.created_at)
             else:
-                last_message_text = ""
-                last_message_time = None
+                continue  # Skip empty rooms (failsafe)
 
-            # Full profile URL
-            if other_user.profile_photo:
-                profile_url = request.build_absolute_uri(other_user.profile_photo.url)
-            else:
-                profile_url = None
+            profile_url = (
+                request.build_absolute_uri(other_user.profile_photo.url)
+                if other_user.profile_photo else None
+            )
 
             inbox_list.append({
                 "room_id": room.id,
@@ -125,14 +117,12 @@ class InboxUserListAPIView(APIView):
                 "last_message_time": last_message_time,
             })
 
-        # Response without pagination
-        response_data = {
+        return Response({
             "status": "200",
             "message": "Inbox users fetched successfully",
             "Response": inbox_list,
-        }
+        }, status=status.HTTP_200_OK)
 
-        return Response(response_data, status=status.HTTP_200_OK)
 
 
 
