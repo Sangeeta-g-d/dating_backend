@@ -43,19 +43,16 @@ class SubscriptionPlan(models.Model):
 
 
 class UserSubscription(models.Model):
-    """
-    Tracks a user's active subscription
-    """
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="subscription")
     plan = models.ForeignKey(SubscriptionPlan, on_delete=models.SET_NULL, null=True)
     start_date = models.DateTimeField(auto_now_add=True)
-    end_date = models.DateTimeField()
+    end_date = models.DateTimeField(null=True, blank=True)  # <-- FIX HERE
     is_active = models.BooleanField(default=True)
 
     def save(self, *args, **kwargs):
-        """Auto-set end_date based on plan duration if not provided"""
-        if not self.end_date and self.plan:
-            self.end_date = self.start_date + timedelta(days=self.plan.duration_days)
+        """Auto-set end_date based on plan duration if not provided but plan exists"""
+        if self.plan and not self.end_date:
+            self.end_date = timezone.now() + timedelta(days=self.plan.duration_days)
         super().save(*args, **kwargs)
 
     def remaining_days(self):
