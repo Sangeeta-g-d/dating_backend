@@ -37,7 +37,6 @@ class SubscriptionPlan(models.Model):
         help_text="Daily swipe limit. Null = unlimited"
     )
     features = models.JSONField(default=list, blank=True, help_text="List of features")
-    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.name} ({self.plan_type})"

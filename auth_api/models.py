@@ -8,6 +8,7 @@ from django.conf import settings
 from admin_part.models import Interest
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 # Custom User Manager
+
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:

@@ -28,6 +28,7 @@ urlpatterns = [
     path('chat/',include('chat.urls')),
     path('ask/',include('ask_me_feature.urls')),
     path('story/',include('story.urls')),
+    path('sub/', include('subscription.urls')),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
