@@ -7,6 +7,9 @@ from swipe_feature.models import Match
 from auth_api.models import CustomUser
 from .models import Post, Like
 from django.shortcuts import get_object_or_404
+from notifications.helper import handle_profile_view
+from notifications.utils import create_notification
+
 
 class AddPostAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -99,6 +102,9 @@ class UserProfileAPIView(APIView):
                 "Response": []
             }, status=status.HTTP_404_NOT_FOUND)
 
+        # ⭐ Trigger profile-view event here
+        handle_profile_view(request.user, other_user)
+
         # Check match status
         is_matched = other_user in Match.get_user_matches(request.user)
 
@@ -133,16 +139,16 @@ class UserProfileAPIView(APIView):
             "message": message,
             "Response": {
                 "isMatched": is_matched,
-                "post_count": post_count,  # 👈 always included
+                "post_count": post_count,
                 "profile": profile_serializer.data,
                 "posts": posts_data
             }
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
-
     
 # like API
+
 class ToggleLikeAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -160,13 +166,22 @@ class ToggleLikeAPIView(APIView):
         like, created = Like.objects.get_or_create(user=user, post=post)
 
         if not created:
-            # Already liked → unlike it
+            # Already liked → unlike
             like.delete()
             is_liked = False
             message = "Post unliked successfully"
         else:
             is_liked = True
             message = "Post liked successfully"
+
+            # 🔔 CREATE NOTIFICATION
+            create_notification(
+                receiver=post.user, 
+                sender=user,
+                notif_type="like",
+                message=f"{user.username} liked your post.",
+                extra_data={"post_id": post.id}
+            )
 
         response_data = {
             "status": "200",
@@ -179,6 +194,7 @@ class ToggleLikeAPIView(APIView):
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
+
     
 
 # add comment api
@@ -196,7 +212,6 @@ class AddCommentAPIView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
 
         content = request.data.get("content")
-
         if not content or content.strip() == "":
             return Response({
                 "status": "400",
@@ -208,6 +223,15 @@ class AddCommentAPIView(APIView):
             user=request.user,
             post=post,
             content=content.strip()
+        )
+
+        # 🔔 Notify post owner (only if commenter is not the owner)
+        create_notification(
+            receiver=post.user,
+            sender=request.user,
+            notif_type="comment",
+            message=f"{request.user.username} commented on your post.",
+            extra_data={"post_id": post.id, "comment_id": comment.id}
         )
 
         response_data = {
@@ -225,7 +249,6 @@ class AddCommentAPIView(APIView):
 
         return Response(response_data, status=status.HTTP_200_OK)
     
-
 class ReplyToCommentAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -241,7 +264,7 @@ class ReplyToCommentAPIView(APIView):
 
         post = parent_comment.post
 
-        # ✅ Allow only post owner to reply
+        # Only post owner can reply
         if post.user != request.user:
             return Response({
                 "status": "403",
@@ -262,6 +285,19 @@ class ReplyToCommentAPIView(APIView):
             post=post,
             content=content.strip(),
             parent=parent_comment
+        )
+
+        # 🔔 Notify original commenter (if not replying to own comment)
+        create_notification(
+            receiver=parent_comment.user,
+            sender=request.user,
+            notif_type="comment",
+            message=f"{request.user.username} replied to your comment.",
+            extra_data={
+                "post_id": post.id,
+                "comment_id": parent_comment.id,
+                "reply_id": reply.id
+            }
         )
 
         response_data = {

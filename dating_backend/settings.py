@@ -47,7 +47,8 @@ INSTALLED_APPS = [
     'chat',
     'ask_me_feature',
     'story',
-    'subscription'
+    'subscription',
+    'notifications',
 ]
 
 AUTH_USER_MODEL = 'auth_api.CustomUser'

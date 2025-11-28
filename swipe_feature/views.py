@@ -10,6 +10,7 @@ from django.utils import timezone
 from random import sample
 from django.db.models import Q
 User = get_user_model()
+from notifications.utils import create_notification
 # Create your views here.
 
 
@@ -251,29 +252,40 @@ class SwipeActionAPIView(APIView):
     def post(self, request, swipe_id):
         action = request.data.get("action")  # "accept" or "reject"
 
-        # Validate action
         if action not in ["accept", "reject"]:
-            response_data = {
+            return Response({
                 "status": "400",
                 "message": "Invalid action. Allowed actions are 'accept' or 'reject'.",
                 "Response": []
-            }
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             swipe = Swipe.objects.get(id=swipe_id, to_user=request.user, is_liked=True)
         except Swipe.DoesNotExist:
-            response_data = {
+            return Response({
                 "status": "404",
                 "message": "Swipe not found or unauthorized.",
                 "Response": []
-            }
-            return Response(response_data, status=status.HTTP_404_NOT_FOUND)
+            }, status=status.HTTP_404_NOT_FOUND)
 
-        # Perform the action
+        # ------------ ACCEPT ------------
         if action == "accept":
             swipe.accept()
-            response_data = {
+
+            # 🔔 Create notification for the user who swiped (from_user)
+            create_notification(
+                receiver=swipe.from_user,
+                sender=request.user,
+                notif_type="new_match",
+                message=f"{request.user.username} accepted your match request!",
+                extra_data={
+                    "swipe_id": swipe.id,
+                    "from_user_id": swipe.from_user.id,
+                    "to_user_id": swipe.to_user.id
+                }
+            )
+
+            return Response({
                 "status": "200",
                 "message": "Match request accepted successfully.",
                 "Response": [
@@ -285,12 +297,13 @@ class SwipeActionAPIView(APIView):
                         "updated_at": swipe.updated_at if hasattr(swipe, "updated_at") else None
                     }
                 ]
-            }
-            return Response(response_data, status=status.HTTP_200_OK)
+            }, status=status.HTTP_200_OK)
 
+        # ------------ REJECT ------------
         elif action == "reject":
             swipe.reject()
-            response_data = {
+
+            return Response({
                 "status": "200",
                 "message": "Match request rejected successfully.",
                 "Response": [
@@ -302,8 +315,8 @@ class SwipeActionAPIView(APIView):
                         "updated_at": swipe.updated_at if hasattr(swipe, "updated_at") else None
                     }
                 ]
-            }
-            return Response(response_data, status=status.HTTP_200_OK)
+            }, status=status.HTTP_200_OK)
+        
 
 class MatchedUsersListAPIView(APIView):
     """
