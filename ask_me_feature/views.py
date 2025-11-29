@@ -209,3 +209,22 @@ class QuestionAnswersAPIView(APIView):
         }
 
         return paginator.get_paginated_response(response_data)
+
+
+class MyQuestionsListAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """
+        Returns all questions posted by logged-in user
+        """
+        user = request.user
+        questions = Question.objects.filter(author=user).order_by('-created_at')
+
+        serializer = MyQuestionSerializer(questions, many=True, context={'request': request})
+
+        return Response({
+            "status": "200",
+            "message": "User questions fetched successfully",
+            "Response": serializer.data
+        })

@@ -16,4 +16,6 @@ urlpatterns = [
 
 
     path('search-users/', UserSearchAPIView.as_view(), name='search_users'),
+
+    path('dashboard-api/', DashboardOverviewAPIView.as_view(), name='dashboard_api'),
 ]

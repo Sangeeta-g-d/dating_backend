@@ -2,6 +2,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from chat.models import MessageReceipt
+from notifications.models import Notification
 from .serializers import *
 from . models import *
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
@@ -11,7 +14,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import status, permissions
 from swipe_feature.models import Match
 from django.db.models import Q
-
+from ask_me_feature.models import Question
 # user registration View
 class UserRegistrationAPIView(APIView):
     parser_classes = [MultiPartParser, FormParser]
@@ -406,14 +409,15 @@ class UserDetailsProfileAPIView(APIView):
         total_matches = Match.objects.filter(
             Q(user1=request.user) | Q(user2=request.user)
         ).count()
-
+        total_questions_asked = Question.objects.filter(author=request.user).count()
         response_data = {
             "status": "200",
             "message": "Profile fetched successfully",
             "Response": [{
                 **serializer.data,
                 "total_posts": total_posts,
-                "total_matches": total_matches
+                "total_matches": total_matches,
+                "total_questions_asked": total_questions_asked 
             }]
         }
         return Response(response_data, status=status.HTTP_200_OK)
@@ -573,4 +577,44 @@ class UserSearchAPIView(APIView):
             "status": "200",
             "message": "Users fetched successfully",
             "Response": serializer.data,
+        })
+
+
+class DashboardOverviewAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # -------------------- 🔹 Unread message count --------------------
+        unread_messages = MessageReceipt.objects.filter(
+            user=user,
+            seen_at__isnull=True
+        ).count()
+
+        # -------------------- 🔹 Unread notifications count ---------------
+        unread_notifications = Notification.objects.filter(
+            user=user, is_read=False
+        ).count()
+
+        # -------------------- 🔹 Subscription check ----------------------
+        subscription = getattr(user, "subscription", None)
+
+        is_subscribed = False
+        expiry_days_left = None
+
+        if subscription and subscription.is_active:
+            is_subscribed = True
+            expiry_days_left = subscription.remaining_days()
+
+        # -------------------- 🔹 Response -------------------------------
+        return Response({
+            "status": 200,
+            "message": "Dashboard stats fetched successfully",
+            "Response": {
+                "unread_messages": unread_messages,
+                "unread_notifications": unread_notifications,
+                "is_subscribed": is_subscribed,
+                "subscription_expiry_days_left": expiry_days_left if is_subscribed else None
+            }
         })

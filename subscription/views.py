@@ -9,13 +9,11 @@ from datetime import timedelta
 from dating_backend.timezone_utils import format_to_ist
 
 class SubscriptionPlanListAPIView(APIView):
-    """Return list of all available subscription plans"""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         plans = SubscriptionPlan.objects.all()
-
-        serializer = SubscriptionPlanSerializer(plans, many=True)
+        serializer = SubscriptionPlanSerializer(plans, many=True, context={"request": request})
 
         return Response({
             "status": "200",

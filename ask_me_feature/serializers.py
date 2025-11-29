@@ -48,3 +48,12 @@ class AnswerCreateSerializer(serializers.ModelSerializer):
         question = Question.objects.get(id=validated_data.pop('question_id'))
         answer = Answer.objects.create(author=user, question=question, **validated_data)
         return answer
+
+
+class MyQuestionSerializer(serializers.ModelSerializer):
+    answers_count = serializers.IntegerField(source='answers.count', read_only=True)
+    likes_count = serializers.IntegerField(source='likes.count', read_only=True)
+
+    class Meta:
+        model = Question
+        fields = ['id', 'text', 'is_public', 'created_at', 'answers_count', 'likes_count']
