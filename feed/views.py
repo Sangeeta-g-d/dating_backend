@@ -179,7 +179,7 @@ class ToggleLikeAPIView(APIView):
                 receiver=post.user, 
                 sender=user,
                 notif_type="like",
-                message=f"{user.username} liked your post.",
+                message=f"{user.full_name} liked your post.",
                 extra_data={"post_id": post.id}
             )
 
@@ -230,7 +230,7 @@ class AddCommentAPIView(APIView):
             receiver=post.user,
             sender=request.user,
             notif_type="comment",
-            message=f"{request.user.username} commented on your post.",
+            message=f"{request.user.full_name} commented on your post.",
             extra_data={"post_id": post.id, "comment_id": comment.id}
         )
 
@@ -240,7 +240,7 @@ class AddCommentAPIView(APIView):
             "Response": {
                 "comment_id": comment.id,
                 "post_id": post.id,
-                "user": request.user.full_name if hasattr(request.user, 'full_name') else request.user.username,
+                "user": request.user.full_name if hasattr(request.user, 'full_name') else request.user.full_name,
                 "content": comment.content,
                 "created_at": format_to_ist(comment.created_at),
                 "total_comments": post.total_comments(),
@@ -292,7 +292,7 @@ class ReplyToCommentAPIView(APIView):
             receiver=parent_comment.user,
             sender=request.user,
             notif_type="comment",
-            message=f"{request.user.username} replied to your comment.",
+            message=f"{request.user.full_name} replied to your comment.",
             extra_data={
                 "post_id": post.id,
                 "comment_id": parent_comment.id,
@@ -307,7 +307,7 @@ class ReplyToCommentAPIView(APIView):
                 "reply_id": reply.id,
                 "post_id": post.id,
                 "parent_comment_id": parent_comment.id,
-                "user": request.user.full_name if hasattr(request.user, 'full_name') else request.user.username,
+                "user": request.user.full_name if hasattr(request.user, 'full_name') else request.user.full_name,
                 "content": reply.content,
                 "created_at": format_to_ist(reply.created_at),
             }
