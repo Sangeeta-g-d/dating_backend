@@ -618,3 +618,65 @@ class DashboardOverviewAPIView(APIView):
                 "subscription_expiry_days_left": expiry_days_left if is_subscribed else None
             }
         })
+    
+
+class GetMyQRUUIDAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({
+            "status": "200",
+            "message": "QR UUID fetched successfully",
+            "Response": {
+                "uuid": str(request.user.qr_uuid)  # ensure proper JSON string format
+            }
+        })
+
+
+class QRMatchAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        Creates a match instantly when user scans another user's QR UUID.
+        """
+        scanned_uuid = request.data.get("uuid")
+
+        if not scanned_uuid:
+            return Response({
+                "status": "400",
+                "message": "UUID is required",
+                "Response": None
+            }, status=400)
+
+        # Fetch the scanned user
+        try:
+            scanned_user = CustomUser.objects.get(qr_uuid=scanned_uuid)
+        except CustomUser.DoesNotExist:
+            return Response({
+                "status": "400",
+                "message": "Invalid QR UUID",
+                "Response": None
+            }, status=400)
+
+        current_user = request.user
+
+        # Prevent self-matching
+        if current_user == scanned_user:
+            return Response({
+                "status": "400",
+                "message": "You cannot match with yourself",
+                "Response": None
+            }, status=400)
+
+        # Create instant match
+        match = Match.create_match(current_user, scanned_user)
+
+        return Response({
+            "status": "200",
+            "message": "Match created successfully",
+            "Response": {
+                "match_id": match.id,
+                "matched_with": scanned_user.id
+            }
+        })

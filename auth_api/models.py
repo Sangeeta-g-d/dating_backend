@@ -6,6 +6,7 @@ from datetime import date
 from datetime import timedelta
 from django.conf import settings
 from admin_part.models import Interest
+import uuid
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 # Custom User Manager
 
@@ -57,6 +58,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     # Daily swipe tracking
     swipes_today = models.PositiveIntegerField(default=0)
     last_swipe_reset = models.DateField(default=timezone.now)
+    qr_uuid = models.UUIDField(default=uuid.uuid4, editable=False, null=True, blank=True)
 
     objects = CustomUserManager()
 

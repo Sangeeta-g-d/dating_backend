@@ -94,18 +94,18 @@ class SwipeUsersAPIView(APIView):
         return Response(response_data, status=status.HTTP_200_OK)
 
 # swipe API
+from django.utils.timezone import now, timedelta
+
 class SwipeAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        user = request.user
         to_user_id = request.data.get("to_user_id")
         is_liked_raw = request.data.get("is_liked", False)
 
-        # ✅ Safely convert to boolean
-        if isinstance(is_liked_raw, str):
-            is_liked = is_liked_raw.lower() in ["true", "1", "yes"]
-        else:
-            is_liked = bool(is_liked_raw)
+        # Convert to boolean safely
+        is_liked = str(is_liked_raw).lower() in ["true", "1", "yes"]
 
         if not to_user_id:
             return Response({
@@ -123,26 +123,67 @@ class SwipeAPIView(APIView):
                 "Response": []
             }, status=status.HTTP_404_NOT_FOUND)
 
-        # ✅ Prevent multiple swipes
-        if Swipe.objects.filter(from_user=request.user, to_user=to_user).exists():
+
+        # -----------------------------------------------------------
+        # 🔥 DAILY SWIPE LIMIT CHECK
+        # -----------------------------------------------------------
+        today_start = now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+        today_swipes = Swipe.objects.filter(
+            from_user=user,
+            created_at__gte=today_start
+        ).count()
+
+        # Check if user has a subscription
+        user_sub = getattr(user, "subscription", None)
+
+        if user_sub and user_sub.is_active:
+            # If plan has swipe limit, apply it (Else unlimited)
+            plan_limit = user_sub.plan.swipe_limit
+
+            if plan_limit is not None and today_swipes >= plan_limit:
+                return Response({
+                    "status": "403",
+                    "message": "Daily swipe limit reached for your subscription plan",
+                    "Response": []
+                }, status=403)
+
+        else:
+            # ❗ Non-subscription users → only 10 daily swipes
+            if today_swipes >= 10:
+                return Response({
+                    "status": "403",
+                    "message": "Free daily swipe limit reached (10 swipes per day)",
+                    "Response": []
+                }, status=403)
+
+
+        # -----------------------------------------------------------
+        # Prevent duplicate swipe
+        # -----------------------------------------------------------
+        if Swipe.objects.filter(from_user=user, to_user=to_user).exists():
             return Response({
                 "status": "400",
                 "message": "You have already swiped on this user.",
                 "Response": []
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # ✅ Create new swipe
+
+        # Create swipe entry
         swipe = Swipe.objects.create(
-            from_user=request.user,
+            from_user=user,
             to_user=to_user,
             is_liked=is_liked
         )
 
         swipe_data = SwipeSerializer(swipe).data
 
-        # ✅ Message logic
+
+        # -----------------------------------------------------------
+        # LIKE / DISLIKE HANDLING
+        # -----------------------------------------------------------
         if is_liked:
-            if Swipe.objects.filter(from_user=to_user, to_user=request.user, is_liked=True).exists():
+            if Swipe.objects.filter(from_user=to_user, to_user=user, is_liked=True).exists():
                 message = "It's a match!"
                 swipe.accept()
             else:
@@ -151,11 +192,13 @@ class SwipeAPIView(APIView):
             swipe.reject()
             message = "You disliked the user."
 
+
         return Response({
             "status": "200",
             "message": message,
             "Response": [swipe_data]
-        }, status=status.HTTP_200_OK)
+        })
+
 
 
 # received match requests
