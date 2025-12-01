@@ -120,6 +120,7 @@ class UserLoginAPIView(APIView):
                         "city": user.city,
                         "state": user.state,
                         "country": user.country,
+                        "qr_code_id":user.qr_uuid,
                         "profile_photo": user.profile_photo.url if user.profile_photo else None,
                         "tokens": {
                             "refresh": str(refresh),
@@ -241,6 +242,7 @@ class VerifyOTPAPIView(APIView):
                         "city": user.city,
                         "state": user.state,
                         "country": user.country,
+                        "qr_code_id":user.qr_uuid,
                         "profile_photo": user.profile_photo.url if user.profile_photo else None,
                         "tokens": {
                             "refresh": str(refresh),
