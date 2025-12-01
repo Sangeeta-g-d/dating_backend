@@ -58,7 +58,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     # Daily swipe tracking
     swipes_today = models.PositiveIntegerField(default=0)
     last_swipe_reset = models.DateField(default=timezone.now)
-    qr_uuid = models.UUIDField(default=uuid.uuid4, editable=False, null=True, blank=True)
+    qr_uuid = models.UUIDField(default=uuid.uuid4, unique=True)
+
 
     objects = CustomUserManager()
 
