@@ -1,35 +1,28 @@
-from notifications.models import Notification
 from firebase_admin import messaging
+from notifications.models import Notification
 from notifications.firebase_init import *
+from auth_api.models import DeviceToken
 
 def send_push_notification(device_tokens, title, body, data=None):
-    """
-    Sends push notification using Firebase FCM.
-    device_tokens: list of FCM tokens
-    """
-
     if not device_tokens:
         return
 
     message = messaging.MulticastMessage(
-        notification=messaging.Notification(
-            title=title,
-            body=body
-        ),
+        notification=messaging.Notification(title=title, body=body),
         data=data or {},
         tokens=device_tokens
     )
 
     response = messaging.send_multicast(message)
-    print(f"[FCM] Successfully sent: {response.success_count}, Failed: {response.failure_count}")
+    print(f"[FCM] Sent: {response.success_count}, Failed: {response.failure_count}")
     return response
 
 
 def create_notification(receiver, sender, notif_type, message="", extra_data=None):
     if receiver == sender:
-        return None  # Don't notify yourself
+        return None
 
-    # 1️⃣ Save notification in database
+    # Save database notification
     notification = Notification.objects.create(
         user=receiver,
         sender=sender,
@@ -38,17 +31,12 @@ def create_notification(receiver, sender, notif_type, message="", extra_data=Non
         extra_data=extra_data or {}
     )
 
-    # 2️⃣ Fetch FCM tokens from receiver model
-    # Assuming your User model has: device_tokens = JSON field OR related table
-    device_tokens = []
+    # Fetch FCM tokens from DeviceToken table
+    device_tokens = list(
+        receiver.device_tokens.values_list("fcm_token", flat=True)
+    )
 
-    if hasattr(receiver, "device_tokens"):
-        if isinstance(receiver.device_tokens, list):
-            device_tokens = receiver.device_tokens
-        else:
-            device_tokens = [receiver.device_tokens]
-
-    # 3️⃣ Send Firebase Push Notification
+    # Send FCM push
     if device_tokens:
         send_push_notification(
             device_tokens=device_tokens,
