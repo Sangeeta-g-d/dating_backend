@@ -262,9 +262,9 @@ class UserMiniSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.profile_photo.url)
         return None
 
-
 class PostDetailSerializer(serializers.ModelSerializer):
     user = UserMiniSerializer(read_only=True)
+    media = serializers.SerializerMethodField()  # <--- updated
     likes_count = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
@@ -282,6 +282,22 @@ class PostDetailSerializer(serializers.ModelSerializer):
             "comments_count",
             "is_liked",
         ]
+
+    def get_media(self, obj):
+        """
+        Convert list of relative media paths into full absolute URLs.
+        """
+        request = self.context.get("request")
+        media_files = obj.media or []
+
+        full_urls = []
+        for path in media_files:
+            if path.startswith("http"):
+                full_urls.append(path)  # already absolute
+            else:
+                full_urls.append(request.build_absolute_uri(path))
+
+        return full_urls
 
     def get_created_at(self, obj):
         return format_to_ist(obj.created_at)
