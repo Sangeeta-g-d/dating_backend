@@ -318,9 +318,9 @@ class ReplyToCommentAPIView(APIView):
 class PostDetailAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request, pk):
+    def get(self, request, post_id):
         try:
-            post = Post.objects.get(id=pk)
+            post = Post.objects.get(id=post_id)
         except Post.DoesNotExist:
             return Response({
                 "status": "404",
