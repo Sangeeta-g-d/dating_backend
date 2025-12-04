@@ -18,7 +18,15 @@ class MessageSerializer(serializers.ModelSerializer):
             "reply_to",
             "created_at",
             "is_deleted",
+            "is_seen"
         ]
+
+    def get_is_seen(self, obj):
+        request = self.context.get("request")
+        user = request.user
+        
+        receipt = obj.receipts.filter(user=user).first()
+        return bool(receipt and receipt.seen_at)
 
     def get_sender(self, obj):
         request = self.context.get("request")
