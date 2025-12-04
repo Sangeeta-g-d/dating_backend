@@ -1,27 +1,5 @@
-import os
-import firebase_admin
-from firebase_admin import credentials, messaging
-import firebase_admin
-import inspect
-print("🔥 Firebase Admin Loaded From:", inspect.getfile(firebase_admin))
-print("🔧 [DEBUG] Loading Firebase configuration...")
-
-BASE_DIR = os.path.dirname(__file__)
-FIREBASE_CRED_PATH = os.path.join(BASE_DIR, "firebase.json")
-print(f"🔧 [DEBUG] Firebase JSON Path: {FIREBASE_CRED_PATH}")
-
-if not firebase_admin._apps:
-    print("🚀 [DEBUG] Initializing Firebase app...")
-    cred = credentials.Certificate(FIREBASE_CRED_PATH)
-    firebase_admin.initialize_app(cred)
-    print("✅ [DEBUG] Firebase initialized successfully!")
-else:
-    print("⚠️ [DEBUG] Firebase app already initialized.")
-
-
 from firebase_admin import messaging
 from notifications.models import Notification
-from notifications.firebase_init import *
 from auth_api.models import DeviceToken
 
 
@@ -36,18 +14,56 @@ def send_push_notification(device_tokens, title, body, data=None):
         print("⚠️ [DEBUG] No device tokens found. Skipping FCM.")
         return
 
-    message = messaging.MulticastMessage(
-        notification=messaging.Notification(title=title, body=body),
-        data=data or {},
-        tokens=device_tokens
-    )
+    # Create messages for each token
+    messages = [
+        messaging.Message(
+            notification=messaging.Notification(title=title, body=body),
+            data=data or {},
+            token=token
+        )
+        for token in device_tokens
+    ]
 
-    print("🚀 [DEBUG] Sending FCM multicast message...")
+    print("🚀 [DEBUG] Sending FCM messages...")
 
     try:
-        response = messaging.send_multicast(message)
+        # Use send_each_for_multicast or send_each (both work)
+        if hasattr(messaging, 'send_each_for_multicast'):
+            # Newer versions
+            response = messaging.send_each_for_multicast(
+                messaging.MulticastMessage(
+                    notification=messaging.Notification(title=title, body=body),
+                    data=data or {},
+                    tokens=device_tokens
+                )
+            )
+        elif hasattr(messaging, 'send_multicast'):
+            # Version 4.4.0+
+            response = messaging.send_multicast(
+                messaging.MulticastMessage(
+                    notification=messaging.Notification(title=title, body=body),
+                    data=data or {},
+                    tokens=device_tokens
+                )
+            )
+        else:
+            # Fallback: send individually
+            print("⚠️ [DEBUG] Using individual send method (older SDK)")
+            response = messaging.send_each(messages)
+        
         print(f"✅ [FCM DEBUG] Success: {response.success_count}, Failed: {response.failure_count}")
+        
+        # Log any failures
+        if response.failure_count > 0:
+            for idx, resp in enumerate(response.responses):
+                if not resp.success:
+                    print(f"❌ [FCM ERROR] Token {device_tokens[idx]}: {resp.exception}")
+        
         return response
+    except AttributeError as e:
+        print(f"❌ [FCM ERROR] Method not available: {str(e)}")
+        print("💡 [HINT] Try upgrading firebase-admin: pip install --upgrade firebase-admin")
+        return None
     except Exception as e:
         print(f"❌ [FCM ERROR] {str(e)}")
         return None
