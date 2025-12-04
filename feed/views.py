@@ -314,3 +314,24 @@ class ReplyToCommentAPIView(APIView):
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+class PostDetailAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, post_id):
+        """
+        Fetch a single post by ID including like count, comment count, and is_liked.
+        """
+        post = get_object_or_404(
+            Post.objects.prefetch_related("likes", "comments", "user"),
+            id=post_id
+        )
+
+        serializer = PostDetailSerializer(post, context={"request": request})
+
+        return Response({
+            "status": "200",
+            "message": "Post fetched successfully",
+            "Response": serializer.data
+        })

@@ -254,3 +254,37 @@ class UserMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ["id", "full_name", "profile_photo"]
+
+
+class PostDetailSerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+    total_likes = serializers.IntegerField(source="total_likes", read_only=True)
+    total_comments = serializers.IntegerField(source="total_comments", read_only=True)
+    is_liked = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Post
+        fields = [
+            "id",
+            "caption",
+            "media",
+            "created_at",
+            "updated_at",
+            "user",
+            "total_likes",
+            "total_comments",
+            "is_liked",
+        ]
+
+    def get_user(self, obj):
+        user = obj.user
+        return {
+            "id": user.id,
+            "full_name": user.full_name if hasattr(user, "full_name") else user.username,
+            "profile_image": user.profile_image.url if hasattr(user, "profile_image") and user.profile_image else None,
+        }
+
+    def get_is_liked(self, obj):
+        request = self.context.get("request")
+        user = request.user
+        return obj.likes.filter(user=user).exists()
