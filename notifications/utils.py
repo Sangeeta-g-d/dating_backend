@@ -1,7 +1,9 @@
 import os
 import firebase_admin
 from firebase_admin import credentials, messaging
-
+import firebase_admin
+import inspect
+print("🔥 Firebase Admin Loaded From:", inspect.getfile(firebase_admin))
 print("🔧 [DEBUG] Loading Firebase configuration...")
 
 BASE_DIR = os.path.dirname(__file__)
