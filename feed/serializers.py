@@ -264,7 +264,7 @@ class UserMiniSerializer(serializers.ModelSerializer):
 
 class PostDetailSerializer(serializers.ModelSerializer):
     user = UserMiniSerializer(read_only=True)
-    media = serializers.SerializerMethodField()  # <--- updated
+    media = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
@@ -284,18 +284,15 @@ class PostDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_media(self, obj):
-        """
-        Convert list of relative media paths into full absolute URLs.
-        """
-        request = self.context.get("request")
         media_files = obj.media or []
-
         full_urls = []
+
         for path in media_files:
             if path.startswith("http"):
-                full_urls.append(path)  # already absolute
+                full_urls.append(path)
             else:
-                full_urls.append(request.build_absolute_uri(path))
+                # Convert to correct S3 URL
+                full_urls.append(default_storage.url(path))
 
         return full_urls
 
