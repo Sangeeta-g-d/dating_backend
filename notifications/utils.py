@@ -1,6 +1,7 @@
+# notifications/firebase_helper.py
 from firebase_admin import messaging
 from notifications.models import Notification
-from auth_api.models import DeviceToken
+from notifications.firebase_init import initialize_firebase
 
 
 def send_push_notification(device_tokens, title, body, data=None):
@@ -14,58 +15,73 @@ def send_push_notification(device_tokens, title, body, data=None):
         print("⚠️ [DEBUG] No device tokens found. Skipping FCM.")
         return
 
-    # Create messages for each token
-    messages = [
-        messaging.Message(
-            notification=messaging.Notification(title=title, body=body),
-            data=data or {},
-            token=token
-        )
-        for token in device_tokens
-    ]
+    # Ensure Firebase is initialized
+    if not initialize_firebase():
+        print("❌ [FCM ERROR] Firebase not initialized. Cannot send notification.")
+        return None
 
     print("🚀 [DEBUG] Sending FCM messages...")
 
     try:
-        # Use send_each_for_multicast or send_each (both work)
-        if hasattr(messaging, 'send_each_for_multicast'):
-            # Newer versions
-            response = messaging.send_each_for_multicast(
-                messaging.MulticastMessage(
+        # Try send_multicast first (Firebase Admin SDK 4.4.0+)
+        if hasattr(messaging, 'send_multicast'):
+            message = messaging.MulticastMessage(
+                notification=messaging.Notification(title=title, body=body),
+                data=data or {},
+                tokens=device_tokens
+            )
+            response = messaging.send_multicast(message)
+        elif hasattr(messaging, 'send_each'):
+            # Fallback for older versions
+            print("⚠️ [DEBUG] Using send_each method (older SDK)")
+            messages = [
+                messaging.Message(
                     notification=messaging.Notification(title=title, body=body),
                     data=data or {},
-                    tokens=device_tokens
+                    token=token
                 )
-            )
-        elif hasattr(messaging, 'send_multicast'):
-            # Version 4.4.0+
-            response = messaging.send_multicast(
-                messaging.MulticastMessage(
-                    notification=messaging.Notification(title=title, body=body),
-                    data=data or {},
-                    tokens=device_tokens
-                )
-            )
-        else:
-            # Fallback: send individually
-            print("⚠️ [DEBUG] Using individual send method (older SDK)")
+                for token in device_tokens
+            ]
             response = messaging.send_each(messages)
+        else:
+            # Last resort: send one by one
+            print("⚠️ [DEBUG] Using individual send method")
+            success_count = 0
+            failure_count = 0
+            for token in device_tokens:
+                try:
+                    message = messaging.Message(
+                        notification=messaging.Notification(title=title, body=body),
+                        data=data or {},
+                        token=token
+                    )
+                    messaging.send(message)
+                    success_count += 1
+                except Exception as e:
+                    print(f"❌ [FCM ERROR] Failed to send to token {token}: {str(e)}")
+                    failure_count += 1
+            
+            # Create a response-like object
+            class Response:
+                def __init__(self, success, failure):
+                    self.success_count = success
+                    self.failure_count = failure
+            
+            response = Response(success_count, failure_count)
         
         print(f"✅ [FCM DEBUG] Success: {response.success_count}, Failed: {response.failure_count}")
         
-        # Log any failures
-        if response.failure_count > 0:
+        # Log any failures if response has detailed info
+        if hasattr(response, 'responses') and response.failure_count > 0:
             for idx, resp in enumerate(response.responses):
                 if not resp.success:
                     print(f"❌ [FCM ERROR] Token {device_tokens[idx]}: {resp.exception}")
         
         return response
-    except AttributeError as e:
-        print(f"❌ [FCM ERROR] Method not available: {str(e)}")
-        print("💡 [HINT] Try upgrading firebase-admin: pip install --upgrade firebase-admin")
-        return None
     except Exception as e:
         print(f"❌ [FCM ERROR] {str(e)}")
+        import traceback
+        print(f"❌ [TRACEBACK] {traceback.format_exc()}")
         return None
 
 
