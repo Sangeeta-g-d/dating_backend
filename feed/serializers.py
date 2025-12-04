@@ -249,42 +249,49 @@ class UserProfileSerializer(serializers.ModelSerializer):
             models.Q(user1=obj.user) | models.Q(user2=obj.user)
         ).count()
 
-
 class UserMiniSerializer(serializers.ModelSerializer):
+    profile_photo = serializers.SerializerMethodField()
+
     class Meta:
         model = CustomUser
         fields = ["id", "full_name", "profile_photo"]
 
+    def get_profile_photo(self, obj):
+        request = self.context.get("request")
+        if obj.profile_photo:
+            return request.build_absolute_uri(obj.profile_photo.url)
+        return None
+
 
 class PostDetailSerializer(serializers.ModelSerializer):
-    user = serializers.SerializerMethodField()
-    total_likes = serializers.IntegerField(source="total_likes", read_only=True)
-    total_comments = serializers.IntegerField(source="total_comments", read_only=True)
+    user = UserMiniSerializer(read_only=True)
+    likes_count = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
         fields = [
             "id",
+            "user",
             "caption",
             "media",
             "created_at",
-            "updated_at",
-            "user",
-            "total_likes",
-            "total_comments",
+            "likes_count",
+            "comments_count",
             "is_liked",
         ]
 
-    def get_user(self, obj):
-        user = obj.user
-        return {
-            "id": user.id,
-            "full_name": user.full_name if hasattr(user, "full_name") else user.username,
-            "profile_image": user.profile_image.url if hasattr(user, "profile_image") and user.profile_image else None,
-        }
+    def get_created_at(self, obj):
+        return format_to_ist(obj.created_at)
+
+    def get_likes_count(self, obj):
+        return obj.likes.count()
+
+    def get_comments_count(self, obj):
+        return obj.comments.count()
 
     def get_is_liked(self, obj):
-        request = self.context.get("request")
-        user = request.user
-        return obj.likes.filter(user=user).exists()
+        user = self.context["request"].user
+        return Like.objects.filter(post=obj, user=user).exists()
