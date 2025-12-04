@@ -18,12 +18,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         if isinstance(self.user, AnonymousUser) or not self.user.is_authenticated:
             logger.warning(f"Authentication failed - User is anonymous or not authenticated")
-            await self.close(code=4001)  # Custom close code for authentication failure
+            await self.close(code=4001)
             return
         
         if not await self.has_room_access():
             logger.warning(f"Room access denied - User {self.user.id} cannot access room {self.room_id}")
-            await self.close(code=4003)  # Custom close code for room access denied
+            await self.close(code=4003)
             return
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
@@ -60,6 +60,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             msg_obj = await self.save_message(message_text, reply_to_id)
             await self.create_receipts(msg_obj)
 
+            # Send Firebase notification to the recipient
+            await self.send_message_notification(msg_obj, message_text)
+
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
@@ -74,7 +77,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }
             )
             return
-
 
         # ----------------- MARK SEEN -----------------
         if msg_type == "seen":
@@ -97,7 +99,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
             return
 
-
     # ======================================================
     #                   EVENT HANDLERS
     # ======================================================
@@ -115,7 +116,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def seen_event(self, event):
         await self.send(text_data=json.dumps(event))
-
 
     async def media_message(self, event):
         await self.send(text_data=json.dumps({
@@ -164,7 +164,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         msg.save()
         return msg
 
-
     @database_sync_to_async
     def create_receipts(self, message_obj):
         from chat.models import ChatRoom, MessageReceipt
@@ -197,4 +196,58 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 pass
             
         return {"timestamp": timestamp.isoformat()}
-    
+
+    @database_sync_to_async
+    def send_message_notification(self, message_obj, message_text):
+        """
+        Send Firebase notification to the recipient of the message
+        """
+        from chat.models import ChatRoom
+        from notifications.utils import create_notification
+        from auth_api.models import CustomUser
+        
+        try:
+            room = ChatRoom.objects.get(id=self.room_id)
+            
+            # Determine the recipient (the other person in the chat)
+            recipient = room.user_b if room.user_a.id == self.user.id else room.user_a
+            
+            # Don't send notification if recipient is the sender
+            if recipient.id == self.user.id:
+                logger.debug("Recipient is sender, skipping notification")
+                return
+            
+            # Get sender's name
+            sender_name = getattr(self.user, 'full_name', 'Someone')
+            
+            # Truncate message for notification (max 50 chars)
+            preview = message_text[:50] + "..." if len(message_text) > 50 else message_text
+            
+            notification_message = f"{sender_name}: {preview}"
+            
+            # Create notification with extra data
+            extra_data = {
+                "room_id": str(self.room_id),
+                "message_id": str(message_obj.id),
+                "sender_name": sender_name,
+            }
+            
+            logger.info(f"📨 Sending message notification to user {recipient.id}")
+            
+            # Use your existing create_notification function
+            create_notification(
+                receiver=recipient,
+                sender=self.user,
+                notif_type="new_message",
+                message=notification_message,
+                extra_data=extra_data
+            )
+            
+            logger.info(f"✅ Message notification sent successfully")
+            
+        except ChatRoom.DoesNotExist:
+            logger.error(f"ChatRoom {self.room_id} not found")
+        except Exception as e:
+            logger.error(f"❌ Error sending message notification: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
