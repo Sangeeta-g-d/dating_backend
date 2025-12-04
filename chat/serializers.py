@@ -6,6 +6,7 @@ class MessageSerializer(serializers.ModelSerializer):
     sender = serializers.SerializerMethodField()
     content = serializers.SerializerMethodField()
     created_at = serializers.SerializerMethodField()
+    is_seen = serializers.SerializerMethodField() 
 
     class Meta:
         model = Message
