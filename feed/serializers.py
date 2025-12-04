@@ -250,20 +250,17 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ).count()
 
 class UserMiniSerializer(serializers.ModelSerializer):
-    profile_image = serializers.SerializerMethodField()
+    profile_photo = serializers.SerializerMethodField()
 
     class Meta:
-        model = User
-        fields = ["id", "full_name", "profile_image"]
+        model = CustomUser
+        fields = ["id", "full_name", "profile_photo"]
 
-    def get_profile_image(self, obj):
+    def get_profile_photo(self, obj):
         request = self.context.get("request")
-        
-        if obj.profile_image:
-            return request.build_absolute_uri(obj.profile_image.url)
-        
+        if obj.profile_photo:
+            return request.build_absolute_uri(obj.profile_photo.url)
         return None
-
 
 
 class PostDetailSerializer(serializers.ModelSerializer):
@@ -285,9 +282,6 @@ class PostDetailSerializer(serializers.ModelSerializer):
             "comments_count",
             "is_liked",
         ]
-
-    def get_user(self, obj):
-        return UserMiniSerializer(obj.user, context=self.context).data
 
     def get_created_at(self, obj):
         return format_to_ist(obj.created_at)
