@@ -200,11 +200,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def send_message_notification(self, message_obj, message_text):
         """
-        Send Firebase notification to the recipient of the message
+        Send Firebase push notification to the recipient of the message.
+        Does NOT store in notification table - just sends the push notification.
         """
         from chat.models import ChatRoom
-        from notifications.utils import create_notification
-        from auth_api.models import CustomUser
+        from notifications.utils import send_push_notification
         
         try:
             room = ChatRoom.objects.get(id=self.room_id)
@@ -220,27 +220,38 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # Get sender's name
             sender_name = getattr(self.user, 'full_name', 'Someone')
             
+            # Fetch device tokens for the recipient
+            device_tokens = list(
+                recipient.device_tokens.values_list("fcm_token", flat=True)
+            )
+            
+            if not device_tokens:
+                logger.debug(f"No device tokens found for user {recipient.id}")
+                return
+            
             # Truncate message for notification (max 50 chars)
             preview = message_text[:50] + "..." if len(message_text) > 50 else message_text
             
-            notification_message = f"{sender_name}: {preview}"
+            notification_title = f"New message from {sender_name}"
+            notification_body = preview
             
-            # Create notification with extra data
-            extra_data = {
+            # Data payload for the notification
+            data = {
                 "room_id": str(self.room_id),
                 "message_id": str(message_obj.id),
+                "sender_id": str(self.user.id),
                 "sender_name": sender_name,
+                "type": "new_message",
             }
             
-            logger.info(f"📨 Sending message notification to user {recipient.id}")
+            logger.info(f"📨 Sending message notification to user {recipient.id} (tokens: {len(device_tokens)})")
             
-            # Use your existing create_notification function
-            create_notification(
-                receiver=recipient,
-                sender=self.user,
-                notif_type="new_message",
-                message=notification_message,
-                extra_data=extra_data
+            # Send push notification directly without storing in DB
+            send_push_notification(
+                device_tokens=device_tokens,
+                title=notification_title,
+                body=notification_body,
+                data=data
             )
             
             logger.info(f"✅ Message notification sent successfully")
