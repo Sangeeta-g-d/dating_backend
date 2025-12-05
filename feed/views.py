@@ -324,13 +324,17 @@ class PostDetailAPIView(APIView):
         except Post.DoesNotExist:
             return Response({
                 "status": "404",
-                "message": "Post not found"
-            }, status=404)
+                "message": "Post not found",
+                "Response": []
+            }, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = PostDetailSerializer(post, context={"request": request})
+        user = request.user
+        serializer = PostSerializer([post], many=True, context={"request": request, "current_user": user})
 
-        return Response({
+        response_data = {
             "status": "200",
             "message": "Post fetched successfully",
-            "Response": serializer.data,
-        })
+            "Response": serializer.data if serializer.data else []
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)

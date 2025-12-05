@@ -232,8 +232,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # Truncate message for notification (max 50 chars)
             preview = message_text[:50] + "..." if len(message_text) > 50 else message_text
             
-            notification_title = f"New message from {sender_name}"
-            notification_body = preview
+            # Send only sender name and message (no title)
+            notification_body = f"{sender_name}: {preview}"
             
             # Data payload for the notification
             data = {
@@ -249,7 +249,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # Send push notification directly without storing in DB
             send_push_notification(
                 device_tokens=device_tokens,
-                title=notification_title,
+                title="",
                 body=notification_body,
                 data=data
             )
