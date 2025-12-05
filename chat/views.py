@@ -101,6 +101,13 @@ class InboxUserListAPIView(APIView):
             else:
                 continue  # Skip empty rooms (failsafe)
 
+            # Count unseen messages for current user
+            unseen_count = MessageReceipt.objects.filter(
+                message__room=room,
+                user=user,
+                seen_at__isnull=True
+            ).count()
+
             profile_url = (
                 request.build_absolute_uri(other_user.profile_photo.url)
                 if other_user.profile_photo else None
@@ -115,6 +122,7 @@ class InboxUserListAPIView(APIView):
                 },
                 "last_message": last_message_text,
                 "last_message_time": last_message_time,
+                "unseen_count": unseen_count,
             })
 
         return Response({
