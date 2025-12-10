@@ -12,6 +12,7 @@ urlpatterns = [
     path("delete_subscription_plan/<int:plan_id>/", views.delete_subscription_plan, name="delete_subscription_plan"),
 
     path('user_list/',views.user_list,name="user_list"),
-    path('matches/',views.matches,name="matches")
+    path('matches/',views.matches,name="matches"),
+    path('chat_background/',views.chat_background,name="chat_background"),
 
 ]

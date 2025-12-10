@@ -150,3 +150,16 @@ def logout_view(request):
 def matches(request):
     all_matches = Match.objects.select_related('user1', 'user2').order_by('-matched_at')
     return render(request, 'matches.html', {'matches': all_matches})
+
+
+def chat_background(request):
+    if request.method == "POST":
+        name = request.POST.get("name")
+        image = request.FILES.get("image")
+
+        if name and image:
+            ChatBackground.objects.create(name=name, image=image)
+            return redirect("chat_background")  # your URL name
+
+    backgrounds = ChatBackground.objects.all()
+    return render(request, 'chat_background.html', {"backgrounds": backgrounds})

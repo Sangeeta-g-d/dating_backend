@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from .models import ChatRoom, Message, MessageReceipt
-from .serializers import ChatRoomSerializer, MessageSerializer
+from .serializers import ChatRoomSerializer, MessageSerializer,ChatBackgroundSerializer
 from .pagination import StandardResultsPagination
 from auth_api.models import CustomUser
 from dating_backend.timezone_utils import format_to_ist
@@ -14,7 +14,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-
+from admin_part.models import ChatBackground
 class ChatRoomHistoryAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -267,3 +267,22 @@ class DeleteMessagesAPIView(APIView):
         )
 
         return Response({"message": "Messages deleted"}, status=200)
+
+
+class ChatBackgroundListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        backgrounds = ChatBackground.objects.all()
+
+        serializer = ChatBackgroundSerializer(
+            backgrounds,
+            many=True,
+            context={'request': request}
+        )
+
+        return Response({
+            "status": "200",
+            "message": "Chat backgrounds fetched successfully",
+            "Response": serializer.data
+        })

@@ -81,3 +81,11 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.plan.name} - {self.status}"
+
+
+class ChatBackground(models.Model):
+    name = models.CharField(max_length=100)
+    image = models.ImageField(upload_to="chat_backgrounds/")
+    
+    def __str__(self):
+        return self.name

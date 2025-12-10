@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Message, ChatRoom
 from dating_backend.timezone_utils import format_to_ist  # Import the utility
+from admin_part.models import ChatBackground
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = serializers.SerializerMethodField()
@@ -121,3 +122,16 @@ class ChatRoomSerializer(serializers.ModelSerializer):
     def get_last_message_at(self, obj):
         """Format last_message_at timestamp using IST timezone"""
         return format_to_ist(obj.last_message_at)
+    
+class ChatBackgroundSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ChatBackground
+        fields = ['id', 'name', 'image_url']
+
+    def get_image_url(self, obj):
+        request = self.context.get("request")
+        if obj.image:
+            return request.build_absolute_uri(obj.image.url)
+        return None
