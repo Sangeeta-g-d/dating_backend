@@ -9,4 +9,5 @@ urlpatterns = [
     path('send-media/<int:room_id>/',MediaMessageUploadAPIView.as_view(),name="send-media"),
     path('delete-messages/<int:room_id>/',DeleteMessagesAPIView.as_view,name="delete-messages"),
     path('bg-img/',ChatBackgroundListAPIView.as_view(),name="bg-img"),
+    path("set-bg/",SetChatBackgroundAPIView.as_view(),name="set-bg")
 ]

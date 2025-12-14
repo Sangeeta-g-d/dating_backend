@@ -8,6 +8,7 @@ from django.conf import settings
 from admin_part.models import Interest
 import uuid
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from admin_part.models import ChatBackground
 # Custom User Manager
 
 class CustomUserManager(BaseUserManager):
@@ -60,7 +61,13 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     last_swipe_reset = models.DateField(default=timezone.now)
     qr_uuid = models.UUIDField(default=uuid.uuid4, unique=True)
 
-
+    chat_background = models.ForeignKey(
+        ChatBackground,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="users"
+    )
     objects = CustomUserManager()
 
     USERNAME_FIELD = "email"

@@ -82,7 +82,6 @@ class InboxUserListAPIView(APIView):
     def get(self, request):
         user = request.user
 
-        # Fetch only chatrooms where a message exists
         chatrooms = ChatRoom.objects.filter(
             (Q(user_a=user) | Q(user_b=user)),
             messages__isnull=False
@@ -92,16 +91,14 @@ class InboxUserListAPIView(APIView):
 
         for room in chatrooms:
             other_user = room.user_b if room.user_a == user else room.user_a
-
             last_msg = room.messages.order_by("-created_at").first()
 
-            if last_msg:
-                last_message_text = "Media" if last_msg.media else last_msg.content or ""
-                last_message_time = format_to_ist(last_msg.created_at)
-            else:
-                continue  # Skip empty rooms (failsafe)
+            if not last_msg:
+                continue
 
-            # Count unseen messages for current user
+            last_message_text = "Media" if last_msg.media else last_msg.content or ""
+            last_message_time = format_to_ist(last_msg.created_at)
+
             unseen_count = MessageReceipt.objects.filter(
                 message__room=room,
                 user=user,
@@ -111,6 +108,14 @@ class InboxUserListAPIView(APIView):
             profile_url = (
                 request.build_absolute_uri(other_user.profile_photo.url)
                 if other_user.profile_photo else None
+            )
+
+            # ✅ Chat background info
+            background_id = user.chat_background.id if user.chat_background else None
+            background_image = (
+                request.build_absolute_uri(user.chat_background.image.url)
+                if user.chat_background and user.chat_background.image
+                else None
             )
 
             inbox_list.append({
@@ -123,6 +128,12 @@ class InboxUserListAPIView(APIView):
                 "last_message": last_message_text,
                 "last_message_time": last_message_time,
                 "unseen_count": unseen_count,
+
+                # ✅ Added fields
+                "chat_background": {
+                    "background_id": background_id,
+                    "image": background_image
+                }
             })
 
         return Response({
@@ -130,6 +141,7 @@ class InboxUserListAPIView(APIView):
             "message": "Inbox users fetched successfully",
             "Response": inbox_list,
         }, status=status.HTTP_200_OK)
+
 
 
 
@@ -286,3 +298,35 @@ class ChatBackgroundListAPIView(APIView):
             "message": "Chat backgrounds fetched successfully",
             "Response": serializer.data
         })
+
+class SetChatBackgroundAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        Set chat background for logged-in user
+        """
+        user = request.user
+        background_id = request.data.get("background_id")
+
+        if not background_id:
+            return Response({
+                "status": "400",
+                "message": "background_id is required",
+                "Response": []
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        background = get_object_or_404(ChatBackground, id=background_id)
+
+        user.chat_background = background
+        user.save(update_fields=["chat_background"])
+
+        return Response({
+            "status": "200",
+            "message": "Chat background updated successfully",
+            "Response": {
+                "background_id": background.id,
+                "name": background.name,
+                "image": request.build_absolute_uri(background.image.url)
+            }
+        }, status=status.HTTP_200_OK)
