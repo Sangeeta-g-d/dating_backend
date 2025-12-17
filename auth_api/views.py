@@ -682,3 +682,35 @@ class QRMatchAPIView(APIView):
                 "matched_with": scanned_user.id
             }
         })
+
+
+class UpdateUserLocationAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        """
+        Add or update latitude and longitude of logged-in user
+        """
+        user = request.user
+
+        profile, created = UserProfile.objects.get_or_create(user=user)
+
+        serializer = UserLocationUpdateSerializer(
+            profile,
+            data=request.data,
+            partial=True
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "status": "200",
+                "message": "User location updated successfully",
+                "Response": serializer.data
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            "status": "400",
+            "message": "Validation error",
+            "Response": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)

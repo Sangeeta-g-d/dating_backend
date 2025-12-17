@@ -20,5 +20,6 @@ urlpatterns = [
     path('dashboard-api/', DashboardOverviewAPIView.as_view(), name='dashboard_api'),
 
     path("get-qr-code/",GetMyQRUUIDAPIView.as_view(),name="get-qr-code"),
-    path("scan-qr-code/",QRMatchAPIView.as_view(),name="scan-qr-code")
+    path("scan-qr-code/",QRMatchAPIView.as_view(),name="scan-qr-code"),
+    path("update-location/", UpdateUserLocationAPIView.as_view(), name="update-user-location"),
 ]
