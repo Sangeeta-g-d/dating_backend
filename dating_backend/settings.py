@@ -123,6 +123,10 @@ DATABASES = {
     }
 }
 
+AGORA_APP_ID = config("AGORA_APP_ID")
+AGORA_APP_CERTIFICATE = config("AGORA_APP_CERTIFICATE")
+
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 

@@ -179,3 +179,21 @@ class MessageReceipt(models.Model):
     def __str__(self):
         return f"Receipt for {self.user.email} on message {self.message_id}"
 
+
+
+
+class AudioCall(models.Model):
+    caller = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="audio_calls_made"
+    )
+    receiver = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="audio_calls_received"
+    )
+    channel_name = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
+    started_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)

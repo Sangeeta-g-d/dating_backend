@@ -11,6 +11,9 @@ class Notification(models.Model):
         ("like", "Post Like"),
         ("comment", "Post Comment"),
         ("system", "System Notification"),
+        ("incoming_call", "Incoming Call"),   # ✅ ADD
+        ("missed_call", "Missed Call"),        # optional
+        ("call_ended", "Call Ended"), 
     ]
 
     user = models.ForeignKey(
