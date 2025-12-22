@@ -2,6 +2,7 @@
 from firebase_admin import messaging
 from notifications.models import Notification
 from notifications.firebase_init import initialize_firebase
+import json
 
 
 def send_push_notification(device_tokens, title, body, data=None):
@@ -116,15 +117,28 @@ def create_notification(receiver, sender, notif_type, message="", extra_data=Non
     # Send Firebase Notification
     if device_tokens:
         print("📨 [DEBUG] Sending push notification...")
+        # Merge extra_data into the FCM data payload. Ensure all values are strings
+        data_payload = {
+            "notification_id": str(notification.id),
+            "type": notif_type,
+            "sender_id": str(sender.id) if sender else "",
+        }
+
+        if notification.extra_data:
+            for k, v in notification.extra_data.items():
+                if isinstance(v, str):
+                    data_payload[k] = v
+                else:
+                    try:
+                        data_payload[k] = json.dumps(v)
+                    except Exception:
+                        data_payload[k] = str(v)
+
         send_push_notification(
             device_tokens=device_tokens,
             title=f"New {notif_type}",
             body=message,
-            data={
-                "notification_id": str(notification.id),
-                "type": notif_type,
-                "sender_id": str(sender.id) if sender else "",
-            }
+            data=data_payload
         )
     else:
         print("⚠️ [DEBUG] No device tokens found for this user.")
