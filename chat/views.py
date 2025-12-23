@@ -349,7 +349,7 @@ from rest_framework.response import Response
 from django.conf import settings
 from .models import CustomUser, AudioCall
 from notifications.utils import create_notification
-
+from .tasks import expire_audio_call
 class StartAudioCallAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -629,7 +629,6 @@ class EndAudioCallAPIView(APIView):
 
         if not call_id:
             return Response({"error": "call_id required"}, status=400)
-
         try:
             call = AudioCall.objects.get(id=call_id)
         except AudioCall.DoesNotExist:
