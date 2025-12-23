@@ -16,4 +16,6 @@ urlpatterns = [
     path("audio/accept/", AcceptAudioCallAPIView.as_view()),
     path("audio/reject/", RejectAudioCallAPIView.as_view()),
     path("audio/end/", EndAudioCallAPIView.as_view()),
+    path("audio/join/", JoinAudioCallAPIView.as_view()),  # For reconnection
+    path("audio/token/refresh/", CallTokenRefreshAPIView.as_view()),  # Token refresh
 ]

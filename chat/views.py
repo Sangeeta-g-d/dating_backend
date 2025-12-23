@@ -338,6 +338,17 @@ import time
 import uuid
 from .models import AudioCall
 from notifications.utils import create_notification
+import uuid
+import time
+from datetime import datetime
+from agora_token_builder import RtcTokenBuilder
+from django.utils import timezone
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.conf import settings
+from .models import CustomUser, AudioCall
+from notifications.utils import create_notification
 
 class StartAudioCallAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -348,23 +359,31 @@ class StartAudioCallAPIView(APIView):
         if not receiver_id:
             return Response({"error": "receiver_id required"}, status=400)
 
-        receiver = CustomUser.objects.get(id=receiver_id)
+        try:
+            receiver = CustomUser.objects.get(id=receiver_id)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Receiver not found"}, status=404)
 
         channel_name = f"audio_call_{uuid.uuid4().hex}"
 
-        print("\n📞 [START AUDIO CALL]")
-        print("Caller:", request.user.id)
-        print("Receiver:", receiver.id)
-        print("Channel:", channel_name)
-
-        # Save call
+        # Create call
         call = AudioCall.objects.create(
             caller=request.user,
             receiver=receiver,
-            channel_name=channel_name
+            channel_name=channel_name,
+            status="ringing"
         )
 
-        # 🔔 Send incoming call notification
+        # Schedule auto-expire task
+        expire_audio_call.apply_async(
+            args=[call.id],
+            countdown=settings.CALL_RING_TIMEOUT
+        )
+
+        # Generate token for caller
+        caller_token = self._generate_token(channel_name, request.user.id)
+
+        # Notify receiver
         create_notification(
             receiver=receiver,
             sender=request.user,
@@ -372,61 +391,36 @@ class StartAudioCallAPIView(APIView):
             message="Incoming audio call",
             extra_data={
                 "call_type": "audio",
-                "channel_name": channel_name,
                 "call_id": str(call.id),
+                "channel_name": channel_name,
                 "caller_id": str(request.user.id),
                 "caller_name": request.user.full_name,
+                "app_id": settings.AGORA_APP_ID
             }
         )
 
         return Response({
             "status": "ringing",
             "call_id": call.id,
-            "channel_name": channel_name
+            "channel_name": channel_name,
+            "app_id": settings.AGORA_APP_ID,
+            "token": caller_token,
+            "uid": request.user.id
         })
 
+    def _generate_token(self, channel_name, uid, role=1):
+        expire_time = 3600
+        current_time = int(time.time())
+        privilege_expired_ts = current_time + expire_time
 
-class RejectAudioCallAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        call_id = request.data.get("call_id")
-
-        call = AudioCall.objects.get(id=call_id, receiver=request.user)
-
-        print("\n❌ [CALL REJECTED]")
-        print("Call ID:", call.id)
-
-        call.is_active = False
-        call.ended_at = timezone.now()
-        call.save()
-
-        # Optional missed call notification
-        create_notification(
-            receiver=call.caller,
-            sender=request.user,
-            notif_type="missed_call",
-            message="Missed audio call",
+        return RtcTokenBuilder.buildTokenWithUid(
+            settings.AGORA_APP_ID,
+            settings.AGORA_APP_CERTIFICATE,
+            channel_name,
+            uid,
+            role,
+            privilege_expired_ts
         )
-
-        return Response({"status": "rejected"})
-
-class EndAudioCallAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        call_id = request.data.get("call_id")
-
-        call = AudioCall.objects.get(id=call_id)
-
-        print("\n📴 [CALL ENDED]")
-        print("Call ID:", call.id)
-
-        call.is_active = False
-        call.ended_at = timezone.now()
-        call.save()
-
-        return Response({"status": "ended"})
 
 
 class AcceptAudioCallAPIView(APIView):
@@ -438,32 +432,301 @@ class AcceptAudioCallAPIView(APIView):
         if not call_id:
             return Response({"error": "call_id required"}, status=400)
 
-        call = AudioCall.objects.get(id=call_id, receiver=request.user)
+        try:
+            call = AudioCall.objects.get(
+                id=call_id,
+                receiver=request.user
+            )
+        except AudioCall.DoesNotExist:
+            return Response(
+                {"error": "Call not found or unauthorized"},
+                status=404
+            )
+
+        # ❌ Call already handled
+        if call.status != "ringing":
+            return Response(
+                {"error": f"Call already {call.status}"},
+                status=400
+            )
 
         print("\n✅ [CALL ACCEPTED]")
         print("User:", request.user.id)
         print("Channel:", call.channel_name)
 
-        uid = request.user.id
-        role = 1
-        expire_time = 3600
-        current_time = int(time.time())
-        privilege_expired_ts = current_time + expire_time
+        # Update call state
+        call.status = "accepted"
+        call.accepted_at = timezone.now()
+        call.save()
 
-        token = RtcTokenBuilder.buildTokenWithUid(
-            settings.AGORA_APP_ID,
-            settings.AGORA_APP_CERTIFICATE,
+        # Generate Agora token for receiver
+        token = self._generate_token(
             call.channel_name,
-            uid,
-            role,
-            privilege_expired_ts
+            request.user.id
+        )
+
+        # Notify caller
+        create_notification(
+            receiver=call.caller,
+            sender=request.user,
+            notif_type="call_accepted",
+            message="Call accepted",
+            extra_data={
+                "call_id": str(call.id),
+                "channel_name": call.channel_name
+            }
         )
 
         return Response({
             "app_id": settings.AGORA_APP_ID,
             "token": token,
             "channel_name": call.channel_name,
-            "uid": uid
+            "uid": request.user.id,
+            "call_id": call.id,
+            "caller_id": call.caller.id,
+            "caller_name": call.caller.full_name
+        })
+
+    def _generate_token(self, channel_name, uid, role=1):
+        expire_time = 3600
+        privilege_expired_ts = int(time.time()) + expire_time
+
+        return RtcTokenBuilder.buildTokenWithUid(
+            settings.AGORA_APP_ID,
+            settings.AGORA_APP_CERTIFICATE,
+            channel_name,
+            uid,
+            role,
+            privilege_expired_ts
+        )
+
+
+class JoinAudioCallAPIView(APIView):
+    """API for user to rejoin an ongoing call"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        call_id = request.data.get("call_id")
+
+        if not call_id:
+            return Response({"error": "call_id required"}, status=400)
+
+        try:
+            call = AudioCall.objects.get(id=call_id)
+        except AudioCall.DoesNotExist:
+            return Response({"error": "Call not found"}, status=404)
+
+        # Authorization
+        if request.user not in [call.caller, call.receiver]:
+            return Response(
+                {"error": "Unauthorized to join this call"},
+                status=403
+            )
+
+        # Only accepted calls can be joined
+        if call.status != "accepted":
+            return Response(
+                {"error": f"Call is {call.status}, cannot join"},
+                status=400
+            )
+
+        token = self._generate_token(
+            call.channel_name,
+            request.user.id
+        )
+
+        print(
+            f"\n🔗 [USER REJOINED CALL] User: {request.user.id}, Call: {call.id}"
+        )
+
+        other_user = (
+            call.caller if request.user == call.receiver else call.receiver
+        )
+
+        return Response({
+            "app_id": settings.AGORA_APP_ID,
+            "token": token,
+            "channel_name": call.channel_name,
+            "uid": request.user.id,
+            "call_id": call.id,
+            "other_user_id": other_user.id,
+            "other_user_name": other_user.full_name
+        })
+
+    def _generate_token(self, channel_name, uid, role=1):
+        expire_time = 3600
+        privilege_expired_ts = int(time.time()) + expire_time
+
+        return RtcTokenBuilder.buildTokenWithUid(
+            settings.AGORA_APP_ID,
+            settings.AGORA_APP_CERTIFICATE,
+            channel_name,
+            uid,
+            role,
+            privilege_expired_ts
+        )
+
+
+class RejectAudioCallAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        call_id = request.data.get("call_id")
+
+        if not call_id:
+            return Response({"error": "call_id required"}, status=400)
+
+        try:
+            call = AudioCall.objects.get(
+                id=call_id,
+                receiver=request.user
+            )
+        except AudioCall.DoesNotExist:
+            return Response(
+                {"error": "Call not found or unauthorized"},
+                status=404
+            )
+
+        # ❌ Call already handled
+        if call.status != "ringing":
+            return Response(
+                {"error": f"Call already {call.status}"},
+                status=400
+            )
+
+        print("\n❌ [CALL REJECTED]")
+        print("Call ID:", call.id)
+
+        # Update call state
+        call.status = "rejected"
+        call.ended_at = timezone.now()
+        call.save()
+
+        # Notify caller
+        create_notification(
+            receiver=call.caller,
+            sender=request.user,
+            notif_type="missed_call",
+            message="Missed audio call",
+            extra_data={
+                "call_id": str(call.id),
+                "call_type": "audio"
+            }
+        )
+
+        return Response({
+            "status": "rejected",
+            "call_id": call.id
         })
 
 
+
+class EndAudioCallAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        call_id = request.data.get("call_id")
+
+        if not call_id:
+            return Response({"error": "call_id required"}, status=400)
+
+        try:
+            call = AudioCall.objects.get(id=call_id)
+        except AudioCall.DoesNotExist:
+            return Response({"error": "Call not found"}, status=404)
+
+        # Authorization
+        if request.user not in [call.caller, call.receiver]:
+            return Response(
+                {"error": "Unauthorized to end this call"},
+                status=403
+            )
+
+        # Only accepted calls can be ended
+        if call.status != "accepted":
+            return Response(
+                {"error": f"Cannot end call in {call.status} state"},
+                status=400
+            )
+
+        print("\n📴 [CALL ENDED]")
+        print("Call ID:", call.id)
+        print("Ended by:", request.user.id)
+
+        call.status = "ended"
+        call.ended_at = timezone.now()
+        call.save()
+
+        other_user = (
+            call.receiver if request.user == call.caller else call.caller
+        )
+
+        create_notification(
+            receiver=other_user,
+            sender=request.user,
+            notif_type="call_ended",
+            message="Call ended",
+            extra_data={
+                "call_id": str(call.id),
+                "ended_by_id": str(request.user.id),
+                "ended_by_name": request.user.full_name
+            }
+        )
+
+        return Response({
+            "status": "ended",
+            "call_id": call.id,
+            "ended_by": request.user.id
+        })
+
+class CallTokenRefreshAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        call_id = request.data.get("call_id")
+
+        if not call_id:
+            return Response({"error": "call_id required"}, status=400)
+
+        try:
+            call = AudioCall.objects.get(id=call_id)
+        except AudioCall.DoesNotExist:
+            return Response({"error": "Call not found"}, status=404)
+
+        if request.user not in [call.caller, call.receiver]:
+            return Response(
+                {"error": "Unauthorized"},
+                status=403
+            )
+
+        if call.status in ["ended", "missed", "rejected"]:
+            return Response(
+                {"error": f"Call already {call.status}"},
+                status=400
+            )
+
+        token = self._generate_token(
+            call.channel_name,
+            request.user.id
+        )
+
+        return Response({
+            "token": token,
+            "app_id": settings.AGORA_APP_ID,
+            "uid": request.user.id,
+            "channel_name": call.channel_name,
+            "expires_in": 3600
+        })
+
+    def _generate_token(self, channel_name, uid, role=1):
+        expire_time = 3600
+        privilege_expired_ts = int(time.time()) + expire_time
+
+        return RtcTokenBuilder.buildTokenWithUid(
+            settings.AGORA_APP_ID,
+            settings.AGORA_APP_CERTIFICATE,
+            channel_name,
+            uid,
+            role,
+            privilege_expired_ts
+        )

@@ -181,19 +181,22 @@ class MessageReceipt(models.Model):
 
 
 
-
 class AudioCall(models.Model):
-    caller = models.ForeignKey(
-        CustomUser,
-        on_delete=models.CASCADE,
-        related_name="audio_calls_made"
+    CALL_STATUS = (
+        ("ringing", "Ringing"),
+        ("accepted", "Accepted"),
+        ("rejected", "Rejected"),
+        ("missed", "Missed"),
+        ("ended", "Ended"),
     )
-    receiver = models.ForeignKey(
-        CustomUser,
-        on_delete=models.CASCADE,
-        related_name="audio_calls_received"
-    )
+
+    caller = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="audio_calls_made")
+    receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="audio_calls_received")
+
     channel_name = models.CharField(max_length=255)
-    is_active = models.BooleanField(default=True)
+
+    status = models.CharField(max_length=20, choices=CALL_STATUS, default="ringing")
+
     started_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)

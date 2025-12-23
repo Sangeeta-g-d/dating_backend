@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'story',
     'subscription',
     'notifications',
+    'django_celery_beat'
 ]
 
 AUTH_USER_MODEL = 'auth_api.CustomUser'
@@ -59,6 +60,15 @@ CSRF_TRUSTED_ORIGINS = [
     "https://luxmivox.app"
     # Add your production domains
 ]
+
+# Celery
+CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+
+# Call ring timeout
+CALL_RING_TIMEOUT = 30  # seconds
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
