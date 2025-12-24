@@ -2,7 +2,7 @@
 from celery import shared_task
 from django.utils import timezone
 from django.conf import settings
-from .models import Call
+from .models import AudioCall
 from notifications.utils import create_notification
 
 

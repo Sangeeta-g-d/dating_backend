@@ -51,7 +51,7 @@ INSTALLED_APPS = [
     'notifications',
     'django_celery_beat'
 ]
-
+from datetime import timedelta
 AUTH_USER_MODEL = 'auth_api.CustomUser'
 
 CSRF_TRUSTED_ORIGINS = [

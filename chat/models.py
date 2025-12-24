@@ -5,7 +5,7 @@ import base64
 from auth_api.models import CustomUser
 # Don't access settings.AUTH_USER_MODEL at module level
 # We'll handle this in the model definition
-
+from django.conf import settings
 # ---------- Encryption Utilities ----------
 def encrypt_text(text: str) -> str:
     """
