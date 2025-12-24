@@ -349,7 +349,7 @@ from rest_framework.response import Response
 from django.conf import settings
 from .models import CustomUser, AudioCall
 from notifications.utils import create_notification
-from .tasks import expire_audio_call
+from .tasks import expire_call
 class StartAudioCallAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -375,7 +375,7 @@ class StartAudioCallAPIView(APIView):
         )
 
         # Schedule auto-expire task
-        expire_audio_call.apply_async(
+        expire_call.apply_async(
             args=[call.id],
             countdown=settings.CALL_RING_TIMEOUT
         )
@@ -693,10 +693,7 @@ class CallTokenRefreshAPIView(APIView):
             return Response({"error": "Call not found"}, status=404)
 
         if request.user not in [call.caller, call.receiver]:
-            return Response(
-                {"error": "Unauthorized"},
-                status=403
-            )
+            return Response({"error": "Unauthorized"}, status=403)
 
         if call.status in ["ended", "missed", "rejected"]:
             return Response(
@@ -704,16 +701,14 @@ class CallTokenRefreshAPIView(APIView):
                 status=400
             )
 
-        token = self._generate_token(
-            call.channel_name,
-            request.user.id
-        )
+        token = self._generate_token(call.channel_name, request.user.id)
 
         return Response({
             "token": token,
             "app_id": settings.AGORA_APP_ID,
             "uid": request.user.id,
             "channel_name": call.channel_name,
+            "call_type": call.call_type,
             "expires_in": 3600
         })
 
@@ -729,3 +724,419 @@ class CallTokenRefreshAPIView(APIView):
             role,
             privilege_expired_ts
         )
+
+
+# video call
+class StartVideoCallAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        receiver_id = request.data.get("receiver_id")
+
+        if not receiver_id:
+            return Response({"error": "receiver_id required"}, status=400)
+
+        try:
+            receiver = CustomUser.objects.get(id=receiver_id)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Receiver not found"}, status=404)
+
+        # Check if receiver is already in a call
+        ongoing_calls = AudioCall.objects.filter(
+            Q(caller=receiver) | Q(receiver=receiver),
+            status="accepted"
+        ).exists()
+        
+        if ongoing_calls:
+            return Response({
+                "error": "User is currently in another call",
+                "code": "user_busy"
+            }, status=400)
+
+        # Generate unique channel name
+        channel_name = f"video_call_{uuid.uuid4().hex}"
+
+        # Create video call
+        call = AudioCall.objects.create(
+            caller=request.user,
+            receiver=receiver,
+            call_type="video",
+            channel_name=channel_name,
+            status="ringing"
+        )
+
+        # Schedule auto-expire task (30 seconds for video)
+        expire_call.apply_async(
+            args=[call.id],
+            countdown=getattr(settings, 'VIDEO_CALL_RING_TIMEOUT', 30)
+        )
+
+        # Generate token for caller
+        caller_token = self._generate_token(channel_name, request.user.id)
+
+        # Prepare caller video preview info
+        caller_video_info = {
+            "uid": str(request.user.id),
+            "name": request.user.full_name,
+            "has_video": True,
+            "is_muted": False
+        }
+
+        # Notify receiver with video call data
+        create_notification(
+            receiver=receiver,
+            sender=request.user,
+            notif_type="incoming_video_call",
+            message="Incoming video call",
+            extra_data={
+                "call_type": "video",
+                "call_id": str(call.id),
+                "channel_name": channel_name,
+                "caller_id": str(request.user.id),
+                "caller_name": request.user.full_name,
+                "caller_video_info": caller_video_info,
+                "app_id": settings.AGORA_APP_ID,
+                "token": caller_token,  # Optional: send token for faster join
+                "timestamp": timezone.now().isoformat()
+            }
+        )
+
+        return Response({
+            "status": "ringing",
+            "call_type": "video",
+            "call_id": call.id,
+            "channel_name": channel_name,
+            "app_id": settings.AGORA_APP_ID,
+            "token": caller_token,
+            "uid": request.user.id,
+            "receiver_info": {
+                "id": receiver.id,
+                "name": receiver.full_name,
+                "avatar": receiver.avatar.url if receiver.avatar else None
+            }
+        })
+
+    def _generate_token(self, channel_name, uid, role=1):
+        """Generate Agora token with video privileges"""
+        expire_time = 3600  # 1 hour
+        current_time = int(time.time())
+        privilege_expired_ts = current_time + expire_time
+
+        token = RtcTokenBuilder.buildTokenWithUid(
+            settings.AGORA_APP_ID,
+            settings.AGORA_APP_CERTIFICATE,
+            channel_name,
+            uid,
+            role,
+            privilege_expired_ts
+        )
+        return token
+
+
+class AcceptVideoCallAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        call_id = request.data.get("call_id")
+
+        if not call_id:
+            return Response({"error": "call_id required"}, status=400)
+
+        try:
+            call = AudioCall.objects.get(
+                id=call_id,
+                receiver=request.user,
+                call_type="video"
+            )
+        except AudioCall.DoesNotExist:
+            return Response(
+                {"error": "Video call not found or unauthorized"},
+                status=404
+            )
+
+        if call.status != "ringing":
+            return Response(
+                {"error": f"Call already {call.status}"},
+                status=400
+            )
+
+        print(f"\n✅ [VIDEO CALL ACCEPTED] Call: {call.id}, User: {request.user.id}")
+
+        # Update call state
+        call.status = "accepted"
+        call.accepted_at = timezone.now()
+        call.save()
+
+        # Generate token for receiver
+        receiver_token = self._generate_token(call.channel_name, request.user.id)
+
+        # Prepare receiver video info
+        receiver_video_info = {
+            "uid": str(request.user.id),
+            "name": request.user.full_name,
+            "has_video": True,
+            "is_muted": False
+        }
+
+        # Notify caller
+        create_notification(
+            receiver=call.caller,
+            sender=request.user,
+            notif_type="video_call_accepted",
+            message="Video call accepted",
+            extra_data={
+                "call_id": str(call.id),
+                "call_type": "video",
+                "channel_name": call.channel_name,
+                "receiver_video_info": receiver_video_info,
+                "token": receiver_token,  # Optional
+                "timestamp": timezone.now().isoformat()
+            }
+        )
+
+        return Response({
+            "status": "accepted",
+            "call_type": "video",
+            "call_id": call.id,
+            "app_id": settings.AGORA_APP_ID,
+            "token": receiver_token,
+            "channel_name": call.channel_name,
+            "uid": request.user.id,
+            "caller_info": {
+                "id": call.caller.id,
+                "name": call.caller.full_name,
+                "avatar": call.caller.avatar.url if call.caller.avatar else None
+            }
+        })
+
+    def _generate_token(self, channel_name, uid, role=1):
+        expire_time = 3600
+        privilege_expired_ts = int(time.time()) + expire_time
+
+        return RtcTokenBuilder.buildTokenWithUid(
+            settings.AGORA_APP_ID,
+            settings.AGORA_APP_CERTIFICATE,
+            channel_name,
+            uid,
+            role,
+            privilege_expired_ts
+        )
+
+
+class JoinVideoCallAPIView(APIView):
+    """API for user to rejoin an ongoing video call"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        call_id = request.data.get("call_id")
+
+        if not call_id:
+            return Response({"error": "call_id required"}, status=400)
+
+        try:
+            call = AudioCall.objects.get(id=call_id, call_type="video")
+        except AudioCall.DoesNotExist:
+            return Response({"error": "Video call not found"}, status=404)
+
+        # Authorization
+        if request.user not in [call.caller, call.receiver]:
+            return Response(
+                {"error": "Unauthorized to join this call"},
+                status=403
+            )
+
+        if call.status != "accepted":
+            return Response(
+                {"error": f"Call is {call.status}, cannot join"},
+                status=400
+            )
+
+        # Generate fresh token
+        token = self._generate_token(call.channel_name, request.user.id)
+
+        # Get other user info
+        other_user = call.caller if request.user == call.receiver else call.receiver
+        
+        # Check if other user is still in call
+        other_user_in_call = AudioCall.objects.filter(
+            id=call_id,
+            status="accepted"
+        ).exists()
+
+        print(f"\n🔗 [USER REJOINED VIDEO CALL] User: {request.user.id}, Call: {call.id}")
+
+        return Response({
+            "status": "rejoined",
+            "call_type": "video",
+            "call_id": call.id,
+            "app_id": settings.AGORA_APP_ID,
+            "token": token,
+            "channel_name": call.channel_name,
+            "uid": request.user.id,
+            "other_user": {
+                "id": other_user.id,
+                "name": other_user.full_name,
+                "avatar": other_user.avatar.url if other_user.avatar else None,
+                "in_call": other_user_in_call
+            },
+            "call_duration": self._get_call_duration(call)
+        })
+
+    def _generate_token(self, channel_name, uid, role=1):
+        expire_time = 3600
+        privilege_expired_ts = int(time.time()) + expire_time
+
+        return RtcTokenBuilder.buildTokenWithUid(
+            settings.AGORA_APP_ID,
+            settings.AGORA_APP_CERTIFICATE,
+            channel_name,
+            uid,
+            role,
+            privilege_expired_ts
+        )
+
+    def _get_call_duration(self, call):
+        if call.accepted_at:
+            duration = timezone.now() - call.accepted_at
+            return int(duration.total_seconds())
+        return 0
+
+
+class RejectVideoCallAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        call_id = request.data.get("call_id")
+        reason = request.data.get("reason", "")
+
+        if not call_id:
+            return Response({"error": "call_id required"}, status=400)
+
+        try:
+            call = AudioCall.objects.get(
+                id=call_id,
+                receiver=request.user,
+                call_type="video"
+            )
+        except AudioCall.DoesNotExist:
+            return Response(
+                {"error": "Video call not found or unauthorized"},
+                status=404
+            )
+
+        if call.status != "ringing":
+            return Response(
+                {"error": f"Call already {call.status}"},
+                status=400
+            )
+
+        print(f"\n❌ [VIDEO CALL REJECTED] Call: {call.id}, Reason: {reason}")
+
+        call.status = "rejected"
+        call.ended_at = timezone.now()
+        call.save()
+
+        # Notify caller
+        create_notification(
+            receiver=call.caller,
+            sender=request.user,
+            notif_type="video_call_rejected",
+            message="Video call rejected",
+            extra_data={
+                "call_id": str(call.id),
+                "call_type": "video",
+                "reason": reason,
+                "timestamp": timezone.now().isoformat()
+            }
+        )
+
+        return Response({
+            "status": "rejected",
+            "call_id": call.id,
+            "reason": reason
+        })
+
+
+class EndVideoCallAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        call_id = request.data.get("call_id")
+        reason = request.data.get("reason", "normal_ending")
+
+        if not call_id:
+            return Response({"error": "call_id required"}, status=400)
+
+        try:
+            call = AudioCall.objects.get(id=call_id, call_type="video")
+        except AudioCall.DoesNotExist:
+            return Response({"error": "Video call not found"}, status=404)
+
+        # Authorization
+        if request.user not in [call.caller, call.receiver]:
+            return Response(
+                {"error": "Unauthorized to end this call"},
+                status=403
+            )
+
+        if call.status != "accepted":
+            return Response(
+                {"error": f"Cannot end call in {call.status} state"},
+                status=400
+            )
+
+        print(f"\n📴 [VIDEO CALL ENDED] Call: {call.id}, Ended by: {request.user.id}, Reason: {reason}")
+
+        # Calculate call duration
+        duration = 0
+        if call.accepted_at:
+            duration = int((timezone.now() - call.accepted_at).total_seconds())
+
+        call.status = "ended"
+        call.ended_at = timezone.now()
+        call.save()
+
+        # Notify other user
+        other_user = call.receiver if request.user == call.caller else call.caller
+
+        create_notification(
+            receiver=other_user,
+            sender=request.user,
+            notif_type="video_call_ended",
+            message="Video call ended",
+            extra_data={
+                "call_id": str(call.id),
+                "call_type": "video",
+                "ended_by_id": str(request.user.id),
+                "ended_by_name": request.user.full_name,
+                "duration": duration,
+                "reason": reason,
+                "timestamp": timezone.now().isoformat()
+            }
+        )
+
+        # You can save call stats to a CallStats model here if needed
+        self._save_call_stats(call, duration, request.user)
+
+        return Response({
+            "status": "ended",
+            "call_id": call.id,
+            "ended_by": request.user.id,
+            "duration": duration,
+            "reason": reason
+        })
+
+    def _save_call_stats(self, call, duration, ended_by):
+        """Optional: Save call statistics"""
+        from .models import CallStats  # You'll need to create this model
+        
+        try:
+            CallStats.objects.create(
+                call=call,
+                duration=duration,
+                ended_by=ended_by,
+                participants_count=2,
+                call_type="video"
+            )
+        except:
+            pass  # Optional stats saving

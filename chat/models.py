@@ -180,8 +180,12 @@ class MessageReceipt(models.Model):
         return f"Receipt for {self.user.email} on message {self.message_id}"
 
 
-
 class AudioCall(models.Model):
+    CALL_TYPES = (
+        ("audio", "Audio"),
+        ("video", "Video"),
+    )
+    
     CALL_STATUS = (
         ("ringing", "Ringing"),
         ("accepted", "Accepted"),
@@ -190,13 +194,41 @@ class AudioCall(models.Model):
         ("ended", "Ended"),
     )
 
-    caller = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="audio_calls_made")
-    receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="audio_calls_received")
-
+    caller = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name="calls_made"
+    )
+    receiver = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name="calls_received"
+    )
+    call_type = models.CharField(max_length=10, choices=CALL_TYPES, default="audio")
     channel_name = models.CharField(max_length=255)
-
     status = models.CharField(max_length=20, choices=CALL_STATUS, default="ringing")
-
+    
     started_at = models.DateTimeField(auto_now_add=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-started_at"]
+        indexes = [
+            models.Index(fields=['status', 'call_type']),
+            models.Index(fields=['caller', 'receiver']),
+        ]
+
+    def __str__(self):
+        return f"{self.call_type.upper()} Call: {self.caller} → {self.receiver}"
+
+    @property
+    def duration(self):
+        """Calculate call duration in seconds"""
+        if self.accepted_at and self.ended_at:
+            return int((self.ended_at - self.accepted_at).total_seconds())
+        return 0
+
+    def is_active(self):
+        """Check if call is currently active"""
+        return self.status == "accepted"

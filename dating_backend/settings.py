@@ -70,6 +70,13 @@ CELERY_TASK_SERIALIZER = "json"
 CALL_RING_TIMEOUT = 30  # seconds
 
 
+CELERY_BEAT_SCHEDULE = {
+    'cleanup-old-calls': {
+        'task': 'chat.tasks.cleanup_old_calls',
+        'schedule': timedelta(days=1),  # Run daily
+    },
+}
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

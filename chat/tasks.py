@@ -1,19 +1,27 @@
+# tasks.py
 from celery import shared_task
 from django.utils import timezone
-from .models import AudioCall
+from django.conf import settings
+from .models import Call
 from notifications.utils import create_notification
 
 
 @shared_task(bind=True, max_retries=3)
-def expire_audio_call(self, call_id):
+def expire_call(self, call_id):
+    """
+    Expire a call if it's still ringing after timeout
+    Works for both audio and video calls
+    """
     try:
-        call = AudioCall.objects.get(id=call_id)
-    except AudioCall.DoesNotExist:
+        call = Call.objects.get(id=call_id)
+    except Call.DoesNotExist:
         return
 
     # Only expire if still ringing
     if call.status != "ringing":
         return
+
+    print(f"⏰ Auto-expiring {call.call_type} call: {call.id}")
 
     call.status = "missed"
     call.ended_at = timezone.now()
@@ -24,9 +32,28 @@ def expire_audio_call(self, call_id):
         receiver=call.caller,
         sender=call.receiver,
         notif_type="missed_call",
-        message="Missed audio call",
+        message=f"Missed {call.call_type} call",
         extra_data={
             "call_id": str(call.id),
-            "call_type": "audio"
+            "call_type": call.call_type,
+            "timestamp": timezone.now().isoformat()
         }
     )
+
+
+@shared_task
+def cleanup_old_calls():
+    """Clean up old ended calls (older than 30 days)"""
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    
+    old_calls = Call.objects.filter(
+        ended_at__lt=thirty_days_ago
+    )
+    
+    count = old_calls.count()
+    old_calls.delete()
+    
+    print(f"🧹 Cleaned up {count} old calls")

@@ -18,4 +18,12 @@ urlpatterns = [
     path("audio/end/", EndAudioCallAPIView.as_view()),
     path("audio/join/", JoinAudioCallAPIView.as_view()),  # For reconnection
     path("audio/token/refresh/", CallTokenRefreshAPIView.as_view()),  # Token refresh
+
+
+    # video call
+    path("video/start/", StartVideoCallAPIView.as_view()),
+    path("video/accept/", AcceptVideoCallAPIView.as_view()),
+    path("video/reject/", RejectVideoCallAPIView.as_view()),
+    path("video/end/", EndVideoCallAPIView.as_view()),
+    path("video/join/", JoinVideoCallAPIView.as_view()),
 ]
