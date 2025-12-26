@@ -3,6 +3,7 @@ from .models import *
 from django.contrib.auth import authenticate
 from admin_part.models import Interest
 from feed.models import Post
+from .distance import haversine_distance
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
@@ -191,20 +192,56 @@ class PostSerializer(serializers.ModelSerializer):
 class UserSearchSerializer(serializers.ModelSerializer):
     profile_photo = serializers.SerializerMethodField()
     age = serializers.SerializerMethodField()
+    distance_km = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = ["id", "full_name", "profile_photo", "age"]
+        fields = [
+            "id",
+            "full_name",
+            "profile_photo",
+            "age",
+            "distance_km",
+        ]
 
     def get_profile_photo(self, obj):
         request = self.context.get("request")
-        if obj.profile_photo:
+        if obj.profile_photo and request:
             return request.build_absolute_uri(obj.profile_photo.url)
         return None
 
     def get_age(self, obj):
-        return obj.profile.age if hasattr(obj, "profile") else None
+        if hasattr(obj, "profile"):
+            return obj.profile.age
+        return None
 
+    def get_distance_km(self, obj):
+        request = self.context.get("request")
+        if not request:
+            return None
+
+        user = request.user
+
+        # Logged-in user must have profile + location
+        if not hasattr(user, "profile"):
+            return None
+
+        if not user.profile.latitude or not user.profile.longitude:
+            return None
+
+        # Target user must have profile + location
+        if not hasattr(obj, "profile"):
+            return None
+
+        if not obj.profile.latitude or not obj.profile.longitude:
+            return None
+
+        return haversine_distance(
+            user.profile.latitude,
+            user.profile.longitude,
+            obj.profile.latitude,
+            obj.profile.longitude
+        )
 
 class UserLocationUpdateSerializer(serializers.ModelSerializer):
     class Meta:

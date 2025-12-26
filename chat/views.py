@@ -912,7 +912,7 @@ class AcceptVideoCallAPIView(APIView):
             "caller_info": {
                 "id": call.caller.id,
                 "name": call.caller.full_name,
-                "avatar": call.caller.avatar.url if call.caller.avatar else None
+                # "avatar": call.caller.avatar.url if call.caller.avatar else None
             }
         })
 
@@ -982,7 +982,7 @@ class JoinVideoCallAPIView(APIView):
             "other_user": {
                 "id": other_user.id,
                 "name": other_user.full_name,
-                "avatar": other_user.avatar.url if other_user.avatar else None,
+                # "avatar": other_user.avatar.url if other_user.avatar else None,
                 "in_call": other_user_in_call
             },
             "call_duration": self._get_call_duration(call)
