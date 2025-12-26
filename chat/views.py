@@ -812,7 +812,7 @@ class StartVideoCallAPIView(APIView):
             "receiver_info": {
                 "id": receiver.id,
                 "name": receiver.full_name,
-                "avatar": receiver.avatar.url if receiver.avatar else None
+                # "avatar": receiver.avatar.url if receiver.avatar else None
             }
         })
 
