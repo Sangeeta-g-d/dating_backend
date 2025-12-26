@@ -320,7 +320,7 @@ class SwipeActionAPIView(APIView):
                 receiver=swipe.from_user,
                 sender=request.user,
                 notif_type="new_match",
-                message=f"{request.user.username} accepted your match request!",
+                message=f"{request.user.full_name} accepted your match request!",
                 extra_data={
                     "swipe_id": swipe.id,
                     "from_user_id": swipe.from_user.id,
