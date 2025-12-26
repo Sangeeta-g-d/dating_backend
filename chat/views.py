@@ -1,3 +1,4 @@
+from operator import call
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -349,7 +350,7 @@ from rest_framework.response import Response
 from django.conf import settings
 from .models import CustomUser, AudioCall
 from notifications.utils import create_notification
-from .tasks import expire_call
+from .tasks import expire_call, force_end_call
 class StartAudioCallAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -744,7 +745,8 @@ class StartVideoCallAPIView(APIView):
         # Check if receiver is already in a call
         ongoing_calls = AudioCall.objects.filter(
             Q(caller=receiver) | Q(receiver=receiver),
-            status="accepted"
+            status__in=["ringing", "accepted"],
+            ended_at__isnull=True
         ).exists()
         
         if ongoing_calls:
@@ -867,6 +869,11 @@ class AcceptVideoCallAPIView(APIView):
         call.accepted_at = timezone.now()
         call.save()
 
+        force_end_call.apply_async(
+        args=[call.id],
+        countdown=getattr(settings, "MAX_VIDEO_CALL_DURATION", 3600)
+        )
+
         # Generate token for receiver
         receiver_token = self._generate_token(call.channel_name, request.user.id)
 
@@ -958,10 +965,9 @@ class JoinVideoCallAPIView(APIView):
         other_user = call.caller if request.user == call.receiver else call.receiver
         
         # Check if other user is still in call
-        other_user_in_call = AudioCall.objects.filter(
-            id=call_id,
-            status="accepted"
-        ).exists()
+        other_user_in_call = (
+            call.status == "accepted" and call.ended_at is None
+        )
 
         print(f"\n🔗 [USER REJOINED VIDEO CALL] User: {request.user.id}, Call: {call.id}")
 
@@ -1079,11 +1085,11 @@ class EndVideoCallAPIView(APIView):
                 status=403
             )
 
-        if call.status != "accepted":
-            return Response(
-                {"error": f"Cannot end call in {call.status} state"},
-                status=400
-            )
+        if call.status == "ended":
+            return Response({
+                "status": "already_ended",
+                "call_id": call.id
+            })
 
         print(f"\n📴 [VIDEO CALL ENDED] Call: {call.id}, Ended by: {request.user.id}, Reason: {reason}")
 

@@ -13,8 +13,8 @@ def expire_call(self, call_id):
     Works for both audio and video calls
     """
     try:
-        call = Call.objects.get(id=call_id)
-    except Call.DoesNotExist:
+        call = AudioCall.objects.get(id=call_id)
+    except AudioCall.DoesNotExist:
         return
 
     # Only expire if still ringing
@@ -49,7 +49,7 @@ def cleanup_old_calls():
     
     thirty_days_ago = timezone.now() - timedelta(days=30)
     
-    old_calls = Call.objects.filter(
+    old_calls = AudioCall.objects.filter(
         ended_at__lt=thirty_days_ago
     )
     
@@ -57,3 +57,17 @@ def cleanup_old_calls():
     old_calls.delete()
     
     print(f"🧹 Cleaned up {count} old calls")
+
+
+@shared_task
+def force_end_call(call_id):
+    from django.utils import timezone
+    from chat.models import AudioCall
+
+    try:
+        call = AudioCall.objects.get(id=call_id, status="accepted")
+        call.status = "ended"
+        call.ended_at = timezone.now()
+        call.save()
+    except AudioCall.DoesNotExist:
+        pass
