@@ -714,3 +714,22 @@ class UpdateUserLocationAPIView(APIView):
             "message": "Validation error",
             "Response": serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class DeleteAccountAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        """
+        Delete logged-in user's account permanently
+        """
+        user = request.user
+
+        user.delete()
+
+        return Response({
+            "status": "200",
+            "message": "User account deleted successfully",
+            "Response": None
+        }, status=status.HTTP_200_OK)

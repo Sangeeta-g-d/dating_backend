@@ -22,4 +22,5 @@ urlpatterns = [
     path("get-qr-code/",GetMyQRUUIDAPIView.as_view(),name="get-qr-code"),
     path("scan-qr-code/",QRMatchAPIView.as_view(),name="scan-qr-code"),
     path("update-location/", UpdateUserLocationAPIView.as_view(), name="update-user-location"),
+    path("delete-account/", DeleteAccountAPIView.as_view(), name="delete-account"),
 ]
