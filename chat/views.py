@@ -1105,24 +1105,26 @@ class EndVideoCallAPIView(APIView):
         # Notify other user
         other_user = call.receiver if request.user == call.caller else call.caller
 
-        create_notification(
-            receiver=other_user,
-            sender=request.user,
-            notif_type="video_call_ended",
-            message="Video call ended",
-            extra_data={
-                "call_id": str(call.id),
-                "call_type": "video",
-                "ended_by_id": str(request.user.id),
-                "ended_by_name": request.user.full_name,
-                "duration": duration,
-                "reason": reason,
-                "timestamp": timezone.now().isoformat()
-            }
-        )
+        try:
+            create_notification(
+                receiver=other_user,
+                sender=request.user,
+                notif_type="video_call_ended",
+                message="Video call ended",
+                extra_data={
+                    "call_id": str(call.id),
+                    "call_type": "video",
+                    "ended_by_id": str(request.user.id),
+                    "ended_by_name": request.user.full_name,
+                    "duration": duration,
+                    "reason": reason,
+                    "timestamp": timezone.now().isoformat()
+                }
+            )
+        except Exception as e:
+            # IMPORTANT: never crash API because of notifications
+            print("⚠️ Notification failed (ignored):", str(e))
 
-        # You can save call stats to a CallStats model here if needed
-        self._save_call_stats(call, duration, request.user)
 
         return Response({
             "status": "ended",
@@ -1131,18 +1133,3 @@ class EndVideoCallAPIView(APIView):
             "duration": duration,
             "reason": reason
         })
-
-    def _save_call_stats(self, call, duration, ended_by):
-        """Optional: Save call statistics"""
-        from .models import CallStats  # You'll need to create this model
-        
-        try:
-            CallStats.objects.create(
-                call=call,
-                duration=duration,
-                ended_by=ended_by,
-                participants_count=2,
-                call_type="video"
-            )
-        except:
-            pass  # Optional stats saving
