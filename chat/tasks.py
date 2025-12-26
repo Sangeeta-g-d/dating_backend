@@ -15,10 +15,12 @@ def expire_call(self, call_id):
     try:
         call = AudioCall.objects.get(id=call_id)
     except AudioCall.DoesNotExist:
+        print(f"⚠️ Call {call_id} not found for expiration")
         return
 
     # Only expire if still ringing
     if call.status != "ringing":
+        print(f"⏰ Call {call.id} already {call.status}, skipping expiration")
         return
 
     print(f"⏰ Auto-expiring {call.call_type} call: {call.id}")
@@ -27,19 +29,23 @@ def expire_call(self, call_id):
     call.ended_at = timezone.now()
     call.save()
 
-    # Notify caller
-    create_notification(
-        receiver=call.caller,
-        sender=call.receiver,
-        notif_type="missed_call",
-        message=f"Missed {call.call_type} call",
-        extra_data={
-            "call_id": str(call.id),
-            "call_type": call.call_type,
-            "timestamp": timezone.now().isoformat()
-        }
-    )
-
+    # Notify caller (not receiver!) that call was missed
+    try:
+        create_notification(
+            receiver=call.caller,  # Notify the person who MADE the call
+            sender=call.receiver,   # From the person who DIDN'T answer
+            notif_type=f"{call.call_type}_call_missed",  # More specific notification type
+            message=f"{call.receiver.full_name} didn't answer",
+            extra_data={
+                "call_id": str(call.id),
+                "call_type": call.call_type,
+                "receiver_id": str(call.receiver.id),
+                "receiver_name": call.receiver.full_name,
+                "timestamp": timezone.now().isoformat()
+            }
+        )
+    except Exception as e:
+        print(f"⚠️ Failed to send missed call notification: {e}")
 
 @shared_task
 def cleanup_old_calls():

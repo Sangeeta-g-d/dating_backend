@@ -1,4 +1,5 @@
 from operator import call
+from django.dispatch import receiver
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -744,9 +745,10 @@ class StartVideoCallAPIView(APIView):
 
         # Check if receiver is already in a call
         ongoing_calls = AudioCall.objects.filter(
-            Q(caller=receiver) | Q(receiver=receiver),
+            Q(caller=receiver) | Q(receiver=receiver)
+        ).filter(
             status__in=["ringing", "accepted"],
-            ended_at__isnull=True
+            ended_at__isnull=True  # Most important: no end time
         ).exists()
         
         if ongoing_calls:
