@@ -678,7 +678,7 @@ class EndAudioCallAPIView(APIView):
 
         # Determine notification type based on final status
         if call.status == "cancelled":
-            notif_type = "call_cancelled"
+            notif_type = "call_ended"
             message = "Call cancelled"
         elif call.status == "missed":
             notif_type = "call_missed"
