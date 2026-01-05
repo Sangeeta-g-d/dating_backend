@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Message, ChatRoom
+from .models import Message, ChatRoom, AudioCall
 from dating_backend.timezone_utils import format_to_ist  # Import the utility
 from admin_part.models import ChatBackground
 
@@ -134,4 +134,68 @@ class ChatBackgroundSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if obj.image:
             return request.build_absolute_uri(obj.image.url)
+        return None
+
+
+
+# call history 
+class CallHistorySerializer(serializers.ModelSerializer):
+    caller_name = serializers.CharField(source="caller.full_name", read_only=True)
+    receiver_name = serializers.CharField(source="receiver.full_name", read_only=True)
+
+    caller_profile_photo = serializers.SerializerMethodField()
+    receiver_profile_photo = serializers.SerializerMethodField()
+
+    started_at = serializers.SerializerMethodField()
+    accepted_at = serializers.SerializerMethodField()
+    ended_at = serializers.SerializerMethodField()
+
+    duration = serializers.IntegerField(read_only=True)
+    call_direction = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AudioCall
+        fields = [
+            "id",
+            "call_type",
+            "status",
+            "call_direction",   # ✅ NEW
+            "channel_name",
+
+            "caller_name",
+            "receiver_name",
+            "caller_profile_photo",
+            "receiver_profile_photo",
+
+            "started_at",
+            "accepted_at",
+            "ended_at",
+            "duration",
+        ]
+
+    def get_call_direction(self, obj):
+        request = self.context.get("request")
+        if request and request.user == obj.caller:
+            return "outgoing"
+        return "incoming"
+
+    def get_started_at(self, obj):
+        return format_to_ist(obj.started_at)
+
+    def get_accepted_at(self, obj):
+        return format_to_ist(obj.accepted_at)
+
+    def get_ended_at(self, obj):
+        return format_to_ist(obj.ended_at)
+
+    def get_caller_profile_photo(self, obj):
+        request = self.context.get("request")
+        if obj.caller.profile_photo:
+            return request.build_absolute_uri(obj.caller.profile_photo.url)
+        return None
+
+    def get_receiver_profile_photo(self, obj):
+        request = self.context.get("request")
+        if obj.receiver.profile_photo:
+            return request.build_absolute_uri(obj.receiver.profile_photo.url)
         return None

@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from .models import ChatRoom, Message, MessageReceipt
-from .serializers import ChatRoomSerializer, MessageSerializer,ChatBackgroundSerializer
+from .serializers import ChatRoomSerializer, MessageSerializer,ChatBackgroundSerializer,CallHistorySerializer
 from .pagination import StandardResultsPagination
 from auth_api.models import CustomUser
 from dating_backend.timezone_utils import format_to_ist
@@ -17,6 +17,8 @@ from asgiref.sync import async_to_sync
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from admin_part.models import ChatBackground
+from rest_framework.pagination import PageNumberPagination
+
 class ChatRoomHistoryAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -608,8 +610,8 @@ class RejectAudioCallAPIView(APIView):
         create_notification(
             receiver=call.caller,
             sender=request.user,
-            notif_type="missed_call",
-            message="Missed audio call",
+            notif_type="call_rejected",
+            message="audio call rejected",
             extra_data={
                 "call_id": str(call.id),
                 "call_type": "audio"
@@ -1134,4 +1136,45 @@ class EndVideoCallAPIView(APIView):
             "ended_by": request.user.id,
             "duration": duration,
             "reason": reason
+        })
+
+
+
+# call history 
+
+class CallHistoryPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 50
+
+
+class CallHistoryAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    pagination_class = CallHistoryPagination
+
+    def get(self, request):
+        user = request.user
+
+        calls = AudioCall.objects.filter(
+            Q(caller=user) | Q(receiver=user)
+        ).order_by("-started_at")
+
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(calls, request)
+
+        serializer = CallHistorySerializer(
+            page,
+            many=True,
+            context={"request": request}
+        )
+
+        return Response({
+            "status": "200",
+            "message": "Call history fetched successfully",
+            "Response": {
+                "count": paginator.page.paginator.count,
+                "next": paginator.get_next_link(),
+                "previous": paginator.get_previous_link(),
+                "results": serializer.data
+            }
         })

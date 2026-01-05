@@ -26,4 +26,6 @@ urlpatterns = [
     path("video/reject/", RejectVideoCallAPIView.as_view()),
     path("video/end/", EndVideoCallAPIView.as_view()),
     path("video/join/", JoinVideoCallAPIView.as_view()),
+
+    path("call-history/", CallHistoryAPIView.as_view(), name="call-history"),
 ]
