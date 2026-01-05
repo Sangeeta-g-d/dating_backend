@@ -624,7 +624,6 @@ class RejectAudioCallAPIView(APIView):
         })
 
 
-
 class EndAudioCallAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -633,6 +632,7 @@ class EndAudioCallAPIView(APIView):
 
         if not call_id:
             return Response({"error": "call_id required"}, status=400)
+        
         try:
             call = AudioCall.objects.get(id=call_id)
         except AudioCall.DoesNotExist:
@@ -645,18 +645,30 @@ class EndAudioCallAPIView(APIView):
                 status=403
             )
 
-        # Only accepted calls can be ended
-        if call.status != "accepted":
+        # Allow ending calls in both "accepted" and "ringing" states
+        allowed_states = ["accepted", "ringing"]
+        if call.status not in allowed_states:
             return Response(
-                {"error": f"Cannot end call in {call.status} state"},
+                {"error": f"Cannot end call in {call.status} state. "
+                         f"Only calls in {allowed_states} can be ended."},
                 status=400
             )
 
         print("\n📴 [CALL ENDED]")
         print("Call ID:", call.id)
         print("Ended by:", request.user.id)
+        print("Previous status:", call.status)
 
-        call.status = "ended"
+        # Determine the final status based on current state
+        if call.status == "ringing":
+            # If call is ringing, mark it as "missed" or "cancelled"
+            if request.user == call.caller:
+                call.status = "cancelled"  # Caller cancelled before receiver answered
+            else:
+                call.status = "missed"  # Receiver declined/ended during ringing
+        else:
+            call.status = "ended"  # Normal end for accepted calls
+
         call.ended_at = timezone.now()
         call.save()
 
@@ -664,22 +676,35 @@ class EndAudioCallAPIView(APIView):
             call.receiver if request.user == call.caller else call.caller
         )
 
+        # Determine notification type based on final status
+        if call.status == "cancelled":
+            notif_type = "call_cancelled"
+            message = "Call cancelled"
+        elif call.status == "missed":
+            notif_type = "call_missed"
+            message = "Missed call"
+        else:
+            notif_type = "call_ended"
+            message = "Call ended"
+
         create_notification(
             receiver=other_user,
             sender=request.user,
-            notif_type="call_ended",
-            message="Call ended",
+            notif_type=notif_type,
+            message=message,
             extra_data={
                 "call_id": str(call.id),
                 "ended_by_id": str(request.user.id),
-                "ended_by_name": request.user.full_name
+                "ended_by_name": request.user.full_name,
+                "call_status": call.status
             }
         )
 
         return Response({
-            "status": "ended",
+            "status": call.status,
             "call_id": call.id,
-            "ended_by": request.user.id
+            "ended_by": request.user.id,
+            "previous_status": call.status
         })
 
 class CallTokenRefreshAPIView(APIView):
