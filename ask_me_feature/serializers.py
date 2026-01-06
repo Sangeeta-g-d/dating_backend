@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Question,Answer
+from dating_backend.timezone_utils import format_to_ist
 
 class QuestionSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source='author.username', read_only=True)
@@ -53,7 +54,18 @@ class AnswerCreateSerializer(serializers.ModelSerializer):
 class MyQuestionSerializer(serializers.ModelSerializer):
     answers_count = serializers.IntegerField(source='answers.count', read_only=True)
     likes_count = serializers.IntegerField(source='likes.count', read_only=True)
+    created_at = serializers.SerializerMethodField()
 
     class Meta:
         model = Question
-        fields = ['id', 'text', 'is_public', 'created_at', 'answers_count', 'likes_count']
+        fields = [
+            'id',
+            'text',
+            'is_public',
+            'created_at',
+            'answers_count',
+            'likes_count'
+        ]
+
+    def get_created_at(self, obj):
+        return format_to_ist(obj.created_at)
