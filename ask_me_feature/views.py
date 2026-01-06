@@ -116,7 +116,6 @@ class QuestionListAPIView(APIView):
         # ✅ Base queryset
         questions = (
             Question.objects.filter(is_public=True)
-            .exclude(author=user)
             .order_by("-created_at")
             .prefetch_related(
                 Prefetch(
