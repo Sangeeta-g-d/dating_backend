@@ -4,7 +4,6 @@ from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 import logging
 from .tasks import send_message_notification_task
-from chat.tasks import send_message_notification_task
 
 logger = logging.getLogger(__name__)
 
