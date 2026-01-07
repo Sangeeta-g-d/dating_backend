@@ -3,7 +3,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 import logging
-
+from dating_backend.timezone_utils import format_to_ist
 logger = logging.getLogger(__name__)
 
 
@@ -73,7 +73,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "sender_id": self.user.id,
                     "sender_name": getattr(self.user, 'full_name', ''),
                     "reply_to": reply_to_id,
-                    "timestamp": msg_obj.created_at.isoformat(),
+                    "timestamp": format_to_ist(msg_obj.created_at),
+
                 }
             )
             return
