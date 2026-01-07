@@ -3,6 +3,8 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
 import logging
+from .tasks import send_message_notification_task
+from chat.tasks import send_message_notification_task
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +63,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.create_receipts(msg_obj)
 
             # Send Firebase notification to the recipient
-            await self.send_message_notification(msg_obj, message_text)
+            # await self.send_message_notification(msg_obj, message_text)
+            send_message_notification_task.delay(
+                        self.room_id,
+                        self.user.id,
+                        msg_obj.id,
+                        message_text
+                )
 
             await self.channel_layer.group_send(
                 self.room_group_name,

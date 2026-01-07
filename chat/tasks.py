@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.conf import settings
 from .models import AudioCall
 from notifications.utils import create_notification
+from notifications.utils import send_push_notification
 
 
 @shared_task(bind=True, max_retries=3)
@@ -77,3 +78,31 @@ def force_end_call(call_id):
         call.save()
     except AudioCall.DoesNotExist:
         pass
+
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=5, retry_kwargs={"max_retries": 3})
+def send_message_notification_task(room_id, sender_id, message_id, message_text):
+    from chat.models import ChatRoom, Message
+
+    message = Message.objects.get(id=message_id)
+    room = ChatRoom.objects.get(id=room_id)
+
+    recipient = room.user_b if room.user_a_id == sender_id else room.user_a
+    if recipient.id == sender_id:
+        return
+
+    tokens = list(recipient.device_tokens.values_list("fcm_token", flat=True))
+    if not tokens:
+        return
+
+    send_push_notification(
+        device_tokens=tokens,
+        title="",
+        body=message_text[:50],
+        data={
+            "room_id": str(room_id),
+            "message_id": str(message_id),
+            "type": "new_message",
+        }
+    )
