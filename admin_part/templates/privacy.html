@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - Lumivox</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+               :root {
+            --primary: #e6399b;
+            --primary-dark: #c2185b;
+            --secondary: #ff6b9d;
+            --dark: #2c2c54;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+            --border-radius: 12px;
+            --box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9ff;
+            background-image: linear-gradient(135deg, #f5f7ff 0%, #f0f2ff 100%);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Header Styles */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 40px 0;
+            margin-bottom: 40px;
+            border-radius: 0 0 30px 30px;
+            box-shadow: 0 4px 20px rgba(138, 43, 226, 0.2);
+        }
+        
+        .header-content {
+            text-align: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .logo-icon {
+            font-size: 36px;
+            background: rgba(255, 255, 255, 0.2);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .logo h1 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 36px;
+            letter-spacing: -0.5px;
+        }
+        
+        .last-updated {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 10px 20px;
+            border-radius: 50px;
+            display: inline-block;
+            margin-top: 15px;
+            font-size: 14px;
+            backdrop-filter: blur(5px);
+        }
+        
+        /* Main Content */
+        .privacy-content {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 40px;
+            margin-bottom: 60px;
+        }
+        
+        /* Table of Contents */
+        .table-of-contents {
+            position: sticky;
+            top: 30px;
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            box-shadow: var(--box-shadow);
+            height: fit-content;
+        }
+        
+        .toc-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 20px;
+            color: var(--dark);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--light-gray);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .toc-list {
+            list-style: none;
+        }
+        
+        .toc-item {
+            margin-bottom: 12px;
+        }
+        
+        .toc-link {
+            text-decoration: none;
+            color: var(--gray);
+            font-size: 15px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            display: block;
+            transition: var(--transition);
+            border-left: 3px solid transparent;
+        }
+        
+        .toc-link:hover, .toc-link.active {
+            color: var(--primary);
+            background-color: rgba(138, 43, 226, 0.05);
+            border-left-color: var(--primary);
+        }
+        
+        /* Policy Sections */
+        .policy-sections {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 40px;
+            box-shadow: var(--box-shadow);
+        }
+        
+        .policy-section {
+            margin-bottom: 40px;
+            scroll-margin-top: 30px;
+        }
+        
+        .policy-section:last-child {
+            margin-bottom: 0;
+        }
+        
+        .section-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 24px;
+            color: var(--dark);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--light-gray);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .section-title i {
+            color: var(--primary);
+            background: rgba(138, 43, 226, 0.1);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .subsection {
+            margin-bottom: 25px;
+        }
+        
+        .subsection-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
+            font-size: 18px;
+            color: var(--dark);
+            margin-bottom: 12px;
+        }
+        
+        .content-text {
+            color: #555;
+            margin-bottom: 15px;
+            font-size: 16px;
+            line-height: 1.7;
+        }
+        
+        .content-text:last-child {
+            margin-bottom: 0;
+        }
+        
+        ul.content-list {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        ul.content-list li {
+            margin-bottom: 8px;
+            color: #555;
+            position: relative;
+            padding-left: 10px;
+        }
+        
+        ul.content-list li:before {
+            content: "•";
+            color: var(--primary);
+            font-weight: bold;
+            position: absolute;
+            left: -10px;
+        }
+        
+        .warning-box {
+            background: #fff5f5;
+            border-left: 4px solid #ff4757;
+            padding: 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+        
+        .warning-box p {
+            color: #555;
+            margin: 0;
+        }
+        
+        .highlight-box {
+            background: #f8f9ff;
+            border: 1px solid #e6e9ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        /* Contact Section */
+        .contact-section {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 40px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            margin-top: 40px;
+            box-shadow: 0 10px 30px rgba(138, 43, 226, 0.2);
+        }
+        
+        .contact-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        
+        .contact-info {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .contact-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            min-width: 200px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .contact-icon {
+            font-size: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .contact-text {
+            font-size: 16px;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 30px 0;
+            color: var(--gray);
+            font-size: 14px;
+            border-top: 1px solid var(--light-gray);
+            margin-top: 40px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 992px) {
+            .privacy-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .table-of-contents {
+                position: static;
+                margin-bottom: 30px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .policy-sections {
+                padding: 30px 20px;
+            }
+            
+            .header {
+                padding: 30px 0;
+            }
+            
+            .logo h1 {
+                font-size: 28px;
+            }
+            
+            .contact-info {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .contact-item {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+        
+        /* Print Styles */
+        @media print {
+            .header, .table-of-contents, .contact-section, .footer {
+                display: none;
+            }
+            
+            .privacy-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .policy-sections {
+                box-shadow: none;
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h1>Lumivox Privacy Policy</h1>
+                </div>
+                <p class="content-text" style="color: rgba(255,255,255,0.9); max-width: 700px; margin: 0 auto;">
+                    Your privacy is our priority. This policy explains how we collect, use, store, and protect your information when you use the Lumivox mobile application.
+                </p>
+                <div class="last-updated">
+                    <i class="fas fa-calendar-alt"></i> Last Updated: 06-01-2026
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="privacy-content">
+            <!-- Table of Contents -->
+            <nav class="table-of-contents">
+                <h2 class="toc-title"><i class="fas fa-list"></i> Contents</h2>
+                <ul class="toc-list">
+                    <li class="toc-item"><a href="#section1" class="toc-link active">1. Information We Collect</a></li>
+                    <li class="toc-item"><a href="#section2" class="toc-link">2. How We Use Your Information</a></li>
+                    <li class="toc-item"><a href="#section3" class="toc-link">3. Data Sharing & Disclosure</a></li>
+                    <li class="toc-item"><a href="#section4" class="toc-link">4. Payments & Premium Features</a></li>
+                    <li class="toc-item"><a href="#section5" class="toc-link">5. Account Deletion & Data Retention</a></li>
+                    <li class="toc-item"><a href="#section6" class="toc-link">6. Children's Privacy</a></li>
+                    <li class="toc-item"><a href="#section7" class="toc-link">7. Security Measures</a></li>
+                    <li class="toc-item"><a href="#section8" class="toc-link">8. User Responsibilities</a></li>
+                    <li class="toc-item"><a href="#section9" class="toc-link">9. Cookies & Tracking</a></li>
+                    <li class="toc-item"><a href="#section10" class="toc-link">10. Third-Party Links</a></li>
+                    <li class="toc-item"><a href="#section11" class="toc-link">11. Policy Changes</a></li>
+                    <li class="toc-item"><a href="#section12" class="toc-link">12. Your Rights</a></li>
+                </ul>
+            </nav>
+
+            <!-- Policy Sections -->
+            <div class="policy-sections">
+                <!-- Section 1 -->
+                <section id="section1" class="policy-section">
+                    <h2 class="section-title"><i class="fas fa-database"></i> 1. Information We Collect</h2>
+                    
+                    <div class="subsection">
+                        <h3 class="subsection-title">1.1 Personal Information</h3>
+                        <p class="content-text">We may collect the following personal information to provide you with the best experience:</p>
+                        <ul class="content-list">
+                            <li>Name / Username</li>
+                            <li>Age / Date of birth (to ensure 18+ eligibility)</li>
+                            <li>Gender</li>
+                            <li>Profile photos, videos, or audio</li>
+                            <li>Email address or mobile number</li>
+                        </ul>
+                        <div class="highlight-box">
+                            <p class="content-text"><strong>Purpose:</strong> Account creation and verification, user matching and interaction, customer support.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <h3 class="subsection-title">1.2 User Content</h3>
+                        <p class="content-text">We collect content you create and share on Lumivox:</p>
+                        <ul class="content-list">
+                            <li>Messages and chats</li>
+                            <li>Voice or video interactions</li>
+                            <li>Profile details and media shared by you</li>
+                        </ul>
+                        <div class="highlight-box">
+                            <p class="content-text"><strong>Purpose:</strong> Enable communication between users, improve app experience and recommendations.</p>
+                            <p class="content-text"><i class="fas fa-lock" style="color: var(--primary); margin-right: 5px;"></i> Messages are private and not publicly visible.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <h3 class="subsection-title">1.3 Location Information</h3>
+                        <p class="content-text">We collect approximate location data via GPS or IP address to show nearby users and prevent fraud and misuse.</p>
+                        <div class="highlight-box">
+                            <p class="content-text"><i class="fas fa-map-marker-alt" style="color: var(--primary); margin-right: 5px;"></i> You can disable location access anytime from your device settings.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <h3 class="subsection-title">1.4 Device & Log Information</h3>
+                        <p class="content-text">We automatically collect technical information to improve our services:</p>
+                        <ul class="content-list">
+                            <li>Device type, OS version</li>
+                            <li>App usage data</li>
+                            <li>IP address</li>
+                            <li>Crash and performance logs</li>
+                        </ul>
+                        <div class="highlight-box">
+                            <p class="content-text"><strong>Purpose:</strong> Improve performance, fix bugs, prevent suspicious activity.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 2 -->
+                <section id="section2" class="policy-section">
+                    <h2 class="section-title"><i class="fas fa-cogs"></i> 2. How We Use Your Information</h2>
+                    <p class="content-text">We use your information to:</p>
+                    <ul class="content-list">
+                        <li>Provide and maintain Lumivox services</li>
+                        <li>Match users based on preferences</li>
+                        <li>Enable chat, voice, and video features</li>
+                        <li>Detect fraud and abuse</li>
+                        <li>Improve app features and user experience</li>
+                        <li>Comply with legal requirements</li>
+                    </ul>
+                </section>
+
+                <!-- Section 3 -->
+                <section id="section3" class="policy-section">
+                    <h2 class="section-title"><i class="fas fa-share-alt"></i> 3. Data Sharing & Disclosure</h2>
+                    
+                    <div class="subsection">
+                        <h3 class="subsection-title">3.1 With Other Users</h3>
+                        <p class="content-text">Your profile information is visible to matched users only. You have full control over what information you share.</p>
+                    </div>
+                    
+                    <div class="subsection">
+                        <h3 class="subsection-title">3.2 With Service Providers</h3>
+                        <p class="content-text">We may share limited data with trusted third parties for:</p>
+                        <ul class="content-list">
+                            <li>Cloud hosting</li>
+                            <li>Analytics</li>
+                            <li>Payment processing</li>
+                        </ul>
+                        <div class="highlight-box">
+                            <p class="content-text">These partners are contractually required to protect your data and use it only for the services they provide to us.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <h3 class="subsection-title">3.3 Legal Requirements</h3>
+                        <p class="content-text">We may disclose information if required by law or government authorities, such as in response to a court order or legal process.</p>
+                        <div class="warning-box">
+                            <p><i class="fas fa-exclamation-triangle" style="color: #ff4757; margin-right: 8px;"></i> We do NOT sell your personal data to third parties.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 4 -->
+                <section id="section4" class="policy-section">
+                    <h2 class="section-title"><i class="fas fa-credit-card"></i> 4. Payments & Premium Features</h2>
+                    <p class="content-text">Lumivox may offer paid subscriptions or in-app purchases to enhance your experience.</p>
+                    <ul class="content-list">
+                        <li>Payment details are processed by secure third-party gateways (e.g., Apple App Store, Google Play Store)</li>
+                        <li>We do not store your card or banking information on our servers</li>
+                    </ul>
+                    <div class="warning-box">
+                        <p><i class="fas fa-exclamation-triangle" style="color: #ff4757; margin-right: 8px;"></i> All purchases are non-refundable, unless required by applicable law.</p>
+                    </div>
+                </section>
+
+                <!-- Section 5 -->
+                <section id="section5" class="policy-section">
+                    <h2 class="section-title"><i class="fas fa-trash-alt"></i> 5. Account Deletion & Data Retention</h2>
+                    <p class="content-text">You have full control over your data:</p>
+                    <ul class="content-list">
+                        <li>You can delete your account anytime from the app settings</li>
+                        <li>Once deleted, all personal data, chats, and media are permanently removed from our active systems</li>
+                    </ul>
+                    <div class="highlight-box">
+                        <p class="content-text"><strong>Note:</strong> Some data may be retained for legal or security purposes for a limited period as required by law.</p>
+                    </div>
+                </section>
+
+                <!-- Section 6 -->
+                <section id="section6" class="policy-section">
+                    <h2 class="section-title"><i class="fas fa-child"></i> 6. Children's Privacy</h2>
+                    <p class="content-text">Lumivox is strictly for users aged 18 and above. We do not knowingly collect or maintain information from anyone under the age of 18.</p>
+                    <div class="warning-box">
+                        <p><i class="fas fa-exclamation-triangle" style="color: #ff4757; margin-right: 8px;"></i> Underage accounts will be terminated immediately upon discovery.</p>
+                    </div>
+                </section>
+
+                <!-- Section 7 -->
+                <section id="section7" class="policy-section">
+                    <h2 class="section-title"><i class="fas fa-shield-alt"></i> 7. Security Measures</h2>
+                    <p class="content-text">We implement industry-standard security measures to protect your information:</p>
+                    <ul class="content-list">
+                        <li>Secure servers and encrypted connections (SSL/TLS)</li>
+                        <li>Restricted access to personal data on a need-to-know basis</li>
+                        <li>Regular monitoring for security threats and vulnerabilities</li>
+                    </ul>
+                    <div class="highlight-box">
+                        <p class="content-text"><i class="fas fa-info-circle" style="color: var(--primary); margin-right: 5px;"></i> While we strive to protect your data, no system is 100% secure. We recommend using strong passwords and being cautious with the information you share.</p>
+                    </div>
+                </section>
+
+                <!-- Section 8 -->
+                <section id="section8" class="policy-section">
+                    <h2 class="section-title"><i class="fas fa-user-check"></i> 8. User Responsibilities</h2>
+                    <p class="content-text">To ensure your safety and privacy, we recommend:</p>
+                    <ul class="content-list">
+                        <li>Do not share sensitive personal or financial information with other users</li>
+                        <li>Meetings arranged outside the app are at your own risk</li>
+                        <li>Report fake or abusive profiles immediately using our reporting tools</li>
+                        <li>Keep your login credentials secure and confidential</li>
+                    </ul>
+                </section>
+
+                <!-- Section 9 -->
+                <section id="section9" class="policy-section">
+                    <h2 class="section-title"><i class="fas fa-cookie-bite"></i> 9. Cookies & Tracking</h2>
+                    <p class="content-text">We may use cookies or similar technologies to:</p>
+                    <ul class="content-list">
+                        <li>Improve app functionality</li>
+                        <li>Remember your preferences</li>
+                        <li>Analyze usage patterns to enhance user experience</li>
+                    </ul>
+                    <div class="highlight-box">
+                        <p class="content-text"><i class="fas fa-sliders-h" style="color: var(--primary); margin-right: 5px;"></i> You can manage cookie permissions via your device or browser settings.</p>
+                    </div>
+                </section>
+
+                <!-- Section 10 -->
+                <section id="section10" class="policy-section">
+                    <h2 class="section-title"><i class="fas fa-external-link-alt"></i> 10. Third-Party Links</h2>
+                    <p class="content-text">Lumivox may contain links to third-party websites or services. We are not responsible for their privacy practices or content.</p>
+                    <div class="highlight-box">
+                        <p class="content-text">We encourage you to review the privacy policies of any third-party sites you visit.</p>
+                    </div>
+                </section>
+
+                <!-- Section 11 -->
+                <section id="section11" class="policy-section">
+                    <h2 class="section-title"><i class="fas fa-sync-alt"></i> 11. Changes to This Policy</h2>
+                    <p class="content-text">We may update this Privacy Policy from time to time to reflect changes in our practices or legal requirements.</p>
+                    <div class="highlight-box">
+                        <p class="content-text"><i class="fas fa-bell" style="color: var(--primary); margin-right: 5px;"></i> We will notify you of significant changes through the app or via email. Continued use of Lumivox means acceptance of the updated policy.</p>
+                    </div>
+                </section>
+
+                <!-- Section 12 -->
+                <section id="section12" class="policy-section">
+                    <h2 class="section-title"><i class="fas fa-gavel"></i> 12. Your Rights</h2>
+                    <p class="content-text">You have the right to:</p>
+                    <ul class="content-list">
+                        <li>Access your personal data</li>
+                        <li>Update or correct inaccurate information</li>
+                        <li>Delete your account and associated data</li>
+                        <li>Withdraw consent (may affect app features)</li>
+                        <li>Object to or restrict certain processing activities</li>
+                    </ul>
+                    <p class="content-text">To exercise these rights, please contact us using the information below.</p>
+                </section>
+
+                <!-- Contact Section -->
+                <div class="contact-section">
+                    <h2 class="contact-title">Contact Us</h2>
+                    <p style="font-size: 18px; max-width: 700px; margin: 0 auto 20px; opacity: 0.9;">
+                        For privacy-related questions, concerns, or to exercise your rights, please contact our Privacy Team.
+                    </p>
+                    
+                    <div class="contact-info">
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div>
+                                <h3 style="margin-bottom: 5px;">Email</h3>
+                                <p class="contact-text">lumivoxdatingapp@gmail.com</p>
+                            </div>
+                        </div>
+                        
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i class="fas fa-map-marker-alt"></i>
+                            </div>
+                            <div>
+                                <h3 style="margin-bottom: 5px;">Country</h3>
+                                <p class="contact-text">India</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p style="margin-top: 30px; font-size: 14px; opacity: 0.8;">
+                        We aim to respond to all inquiries within 48 hours.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="container">
+                <p>© 2026 Lumivox. All rights reserved.</p>
+                <p>By using Lumivox, you agree to our <a href="#" style="color: var(--primary); text-decoration: none;">Terms of Service</a> and this Privacy Policy.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Smooth scrolling for table of contents links
+        document.querySelectorAll('.toc-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Remove active class from all links
+                document.querySelectorAll('.toc-link').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // Add active class to clicked link
+                this.classList.add('active');
+                
+                // Scroll to section
+                const targetId = this.getAttribute('href');
+                const targetSection = document.querySelector(targetId);
+                
+                if (targetSection) {
+                    window.scrollTo({
+                        top: targetSection.offsetTop - 30,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+        
+        // Update active TOC link on scroll
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('.policy-section');
+            const scrollPos = window.scrollY + 100;
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                const sectionId = section.getAttribute('id');
+                
+                if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+                    document.querySelectorAll('.toc-link').forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href') === `#${sectionId}`) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Print functionality
+        const printButton = document.createElement('button');
+        printButton.innerHTML = '<i class="fas fa-print"></i> Print Policy';
+        printButton.style.cssText = `
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
+            box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        `;
+        
+        printButton.addEventListener('mouseover', function() {
+            this.style.transform = 'translateY(-3px)';
+            this.style.boxShadow = '0 6px 20px rgba(138, 43, 226, 0.4)';
+        });
+        
+        printButton.addEventListener('mouseout', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '0 4px 15px rgba(138, 43, 226, 0.3)';
+        });
+        
+        printButton.addEventListener('click', function() {
+            window.print();
+        });
+        
+        document.body.appendChild(printButton);
+        
+        // Initialize first TOC link as active
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelector('.toc-link').classList.add('active');
+        });
+    </script>
+</body>
+</html>

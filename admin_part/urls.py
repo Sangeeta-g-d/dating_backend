@@ -18,5 +18,7 @@ urlpatterns = [
     path('chat_background/',views.chat_background,name="chat_background"),
 
     path("delete-account/", delete_account_view, name="delete_account"),
+    path("privacy/", views.privacy, name="privacy"),
+    path("terms/", views.terms, name="terms"),
 
 ]

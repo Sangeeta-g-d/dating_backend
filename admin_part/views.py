@@ -193,3 +193,9 @@ def delete_account_view(request):
         return redirect("login")  # or homepage
 
     return render(request, "delete_account.html")
+
+def privacy(request):
+    return render(request, 'privacy.html')
+
+def terms(request):
+    return render(request, 'terms.html')
