@@ -1,5 +1,7 @@
 from django.urls import path
 from . import views
+from .views import delete_account_view
+
 
 urlpatterns = [
     path('admin_dashboard/',views.admin_dashboard,name="admin_dashboard"),
@@ -14,5 +16,7 @@ urlpatterns = [
     path('user_list/',views.user_list,name="user_list"),
     path('matches/',views.matches,name="matches"),
     path('chat_background/',views.chat_background,name="chat_background"),
+
+    path("delete-account/", delete_account_view, name="delete_account"),
 
 ]

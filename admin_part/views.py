@@ -4,6 +4,9 @@ from django.http import JsonResponse
 from .models import *
 from django.views.decorators.csrf import csrf_exempt
 from auth_api.models import CustomUser
+from django.contrib import messages
+from django.contrib.auth import authenticate, logout
+from django.views.decorators.http import require_http_methods
 from swipe_feature.models import Match
 # Create your views here.
 
@@ -163,3 +166,30 @@ def chat_background(request):
 
     backgrounds = ChatBackground.objects.all()
     return render(request, 'chat_background.html', {"backgrounds": backgrounds})
+
+
+@require_http_methods(["GET", "POST"])
+def delete_account_view(request):
+    if request.method == "POST":
+        email = request.POST.get("email")
+        password = request.POST.get("password")
+
+        user = authenticate(request, email=email, password=password)
+
+        if user is None:
+            messages.error(request, "Invalid email or password")
+            return redirect("delete_account")
+
+        # Ensure logged-in user is deleting their own account
+        if request.user.is_authenticated and request.user != user:
+            messages.error(request, "You can only delete your own account")
+            return redirect("delete_account")
+
+        # Logout & delete
+        logout(request)
+        user.delete()
+
+        messages.success(request, "Your account has been deleted successfully")
+        return redirect("login")  # or homepage
+
+    return render(request, "delete_account.html")
