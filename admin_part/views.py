@@ -83,7 +83,7 @@ def add_subscription_plan(request):
             duration_days = request.POST.get("duration_days", 0)
             swipe_limit = request.POST.get("swipe_limit") or None
             features = request.POST.getlist("features[]")  # multiple values
-            is_active = request.POST.get("is_active") == "true"
+            # is_active = request.POST.get("is_active") == "true"
 
             if not name:
                 return JsonResponse({"status": "error", "message": "Name is required."})
@@ -95,7 +95,7 @@ def add_subscription_plan(request):
                 duration_days=duration_days,
                 swipe_limit=swipe_limit,
                 features=features,
-                is_active=is_active,
+                # is_active=is_active,
             )
             return JsonResponse({"status": "success", "message": "Plan added successfully!"})
 

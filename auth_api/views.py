@@ -537,7 +537,7 @@ class UserSearchAPIView(APIView):
         min_age = request.GET.get("min_age")
         max_age = request.GET.get("max_age")
 
-        queryset = CustomUser.objects.select_related("profile").all()
+        queryset = CustomUser.objects.select_related("profile").exclude(is_superuser=True).exclude(id=request.user.id)
 
         # --- Search by full_name ---
         if search:
