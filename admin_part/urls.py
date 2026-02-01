@@ -20,5 +20,6 @@ urlpatterns = [
     path("delete-account/", delete_account_view, name="delete_account"),
     path("privacy/", views.privacy, name="privacy"),
     path("terms/", views.terms, name="terms"),
+    path("child-safety/",views.child_safety,name="child-safety"),
 
 ]

@@ -199,3 +199,6 @@ def privacy(request):
 
 def terms(request):
     return render(request, 'terms.html')
+
+def child_safety(request):
+    return render(request, 'child-safety.html')
