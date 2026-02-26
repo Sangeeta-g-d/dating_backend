@@ -110,8 +110,8 @@ WSGI_APPLICATION = 'dating_backend.wsgi.application'
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=7),  # Set your desired expiry time
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),   # Optional: increase refresh token lifetime
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=360),  # Set your desired expiry time
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=420),   # Optional: increase refresh token lifetime
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': False,
     'ALGORITHM': 'HS256',
