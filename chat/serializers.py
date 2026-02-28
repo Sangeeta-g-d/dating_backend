@@ -139,6 +139,64 @@ class ChatBackgroundSerializer(serializers.ModelSerializer):
 
 
 # call history 
+class ChatHistorySerializer(serializers.ModelSerializer):
+    """Serializer for chat history with custom format"""
+    sender_id = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
+    content = serializers.SerializerMethodField()
+    attachments = serializers.SerializerMethodField()
+    is_seen = serializers.SerializerMethodField()
+    createdAt = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Message
+        fields = [
+            "id",
+            "sender_id",
+            "type",
+            "content",
+            "attachments",
+            "is_seen",
+            "createdAt"
+        ]
+
+    def get_sender_id(self, obj):
+        return obj.sender_id
+
+    def get_type(self, obj):
+        """Return message type: text, image, or video"""
+        if obj.media:
+            return obj.media_type or "attachment"
+        return "text"
+
+    def get_content(self, obj):
+        """Return decrypted content"""
+        if obj.is_deleted:
+            return "This message was deleted"
+        return obj.content  # Uses @property decorator for decryption
+
+    def get_attachments(self, obj):
+        """Return media URL or None"""
+        request = self.context.get("request")
+        if obj.media and request:
+            return request.build_absolute_uri(obj.media.url)
+        return None
+
+    def get_is_seen(self, obj):
+        """Check if message is seen by current user"""
+        request = self.context.get("request")
+        user = request.user if request else None
+        
+        if user:
+            receipt = obj.receipts.filter(user=user).first()
+            return bool(receipt and receipt.seen_at)
+        return False
+
+    def get_createdAt(self, obj):
+        """Format created_at timestamp using IST timezone"""
+        return format_to_ist(obj.created_at)
+
+
 class CallHistorySerializer(serializers.ModelSerializer):
     caller_name = serializers.CharField(source="caller.full_name", read_only=True)
     receiver_name = serializers.CharField(source="receiver.full_name", read_only=True)

@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from .models import ChatRoom, Message, MessageReceipt
-from .serializers import ChatRoomSerializer, MessageSerializer,ChatBackgroundSerializer,CallHistorySerializer
+from .serializers import ChatRoomSerializer, MessageSerializer, ChatBackgroundSerializer, CallHistorySerializer, ChatHistorySerializer
 from .pagination import StandardResultsPagination
 from auth_api.models import CustomUser
 from dating_backend.timezone_utils import format_to_ist
@@ -37,46 +37,60 @@ class ChatRoomHistoryAPIView(APIView):
 
             if current_user.id == other_user.id:
                 return Response({
-                    "status": "400",
-                    "message": "Cannot create chat room with yourself"
+                    "success": "400",
+                    "message": "Cannot create chat room with yourself",
+                    "Response": []
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             room, created = self.get_room(current_user, other_user)
 
             # Fetch messages oldest → newest
-            messages = Message.objects.filter(room=room).order_by("-created_at")
+            all_messages = Message.objects.filter(room=room).order_by("-created_at")
 
             paginator = StandardResultsPagination()
-            paginated_messages = paginator.paginate_queryset(messages, request)
+            paginated_messages = paginator.paginate_queryset(all_messages, request)
 
-            # Only serialize messages
-            msg_serializer = MessageSerializer(
+            # Use ChatHistorySerializer for the desired format
+            msg_serializer = ChatHistorySerializer(
                 paginated_messages,
                 many=True,
                 context={"request": request}
             )
 
-            # ⛔ DO NOT USE ChatRoomSerializer HERE
-            # Instead, return only room ID
-            room_data = {
-                "id": room.id
-            }
+            # Calculate pagination info
+            page_num = request.query_params.get('page', 1)
+            try:
+                page_num = int(page_num)
+            except (ValueError, TypeError):
+                page_num = 1
+
+            total_items = all_messages.count()
+            page_size = paginator.page_size
+            total_pages = (total_items + page_size - 1) // page_size  # Ceiling division
+            has_next_page = page_num < total_pages
+            has_previous_page = page_num > 1
 
             response_data = {
-                "status": "200",
-                "message": "Chat fetched successfully" if not created else "New chat room created",
-                "Response": {
-                    "room": room_data,
-                    "messages": msg_serializer.data,
+                "success": "200",
+                "message": "Chat history fetched successfully" if not created else "New chat room created",
+                "Response": msg_serializer.data,
+                "pagination": {
+                    "current_page": page_num,
+                    "page_size": page_size,
+                    "total_items": total_items,
+                    "total_pages": total_pages,
+                    "has_next_page": has_next_page,
+                    "has_previous_page": has_previous_page
                 }
             }
 
-            return paginator.get_paginated_response(response_data)
+            return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({
-                "status": "500",
-                "message": f"Error fetching chat history: {str(e)}"
+                "success": "500",
+                "message": f"Error fetching chat history: {str(e)}",
+                "Response": []
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
