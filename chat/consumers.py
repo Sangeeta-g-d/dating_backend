@@ -14,32 +14,49 @@ logger = logging.getLogger(__name__)
 class ChatConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
+        logger.warning(f"🔌 [CONNECT] ===== CONNECT METHOD START =====")
         self.room_id = self.scope["url_route"]["kwargs"]["room_id"]
         self.room_group_name = f"chat_{self.room_id}"
         self.user = self.scope["user"]
 
-        logger.info(f"WebSocket connection attempt - Room: {self.room_id}, User: {self.user}")
+        logger.warning(f"🔌 [CONNECT] Room ID: {self.room_id}")
+        logger.warning(f"🔌 [CONNECT] Room Group Name: {self.room_group_name}")
+        logger.warning(f"🔌 [CONNECT] User: {self.user}")
+        logger.warning(f"🔌 [CONNECT] Is Authenticated: {self.user.is_authenticated}")
 
         if isinstance(self.user, AnonymousUser) or not self.user.is_authenticated:
-            logger.warning(f"Authentication failed - User is anonymous or not authenticated")
+            logger.warning(f"❌ [CONNECT] Authentication failed - User is anonymous or not authenticated")
             await self.close(code=4001)
             return
         
         if not await self.has_room_access():
-            logger.warning(f"Room access denied - User {self.user.id} cannot access room {self.room_id}")
+            logger.warning(f"❌ [CONNECT] Room access denied - User {self.user.id} cannot access room {self.room_id}")
             await self.close(code=4003)
             return
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
-        logger.info(f"WebSocket connection accepted - User {self.user.id} in room {self.room_id}")
+        logger.warning(f"✅ [CONNECT] WebSocket connection accepted - User {self.user.id} in room {self.room_id}")
+        logger.warning(f"✅ [CONNECT] Channel name: {self.channel_name}")
+        logger.warning(f"✅ [CONNECT] Channel layer: {self.channel_layer}")
 
     async def disconnect(self, close_code):
-        logger.info(f"WebSocket disconnected - Code: {close_code}")
-        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+        logger.warning(f"🔌 [DISCONNECT] ===== DISCONNECT METHOD CALLED =====")
+        logger.warning(f"🔌 [DISCONNECT] Close code: {close_code}")
+        logger.warning(f"🔌 [DISCONNECT] Room: {self.room_id}, User: {self.user}")
+        try:
+            await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+            logger.warning(f"✅ [DISCONNECT] User {self.user.id} removed from group {self.room_group_name}")
+        except Exception as e:
+            logger.error(f"❌ [DISCONNECT] Error during disconnect: {str(e)}", exc_info=True)
 
     async def receive(self, text_data):
         """Handle incoming WebSocket messages"""
+        logger.warning(f"🔔 [RECEIVE] ===== RECEIVE METHOD CALLED =====")
+        logger.warning(f"🔔 [RECEIVE] Raw text_data: {text_data}")
+        logger.warning(f"🔔 [RECEIVE] text_data type: {type(text_data)}")
+        logger.warning(f"🔔 [RECEIVE] text_data length: {len(text_data) if text_data else 0}")
+        
         try:
             logger.info(f"📨 [RECEIVE] Raw WebSocket data received: {text_data}")
             data = json.loads(text_data)
@@ -56,7 +73,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 logger.info(f"📨 [RECEIVE] media_message event detected")
                 await self.handle_media_message(data.get("data"))
             else:
-                logger.warning(f"Unknown event type: {event}")
+                logger.warning(f"🔔 [RECEIVE] Unknown event type: {event}")
                 await self.send(json.dumps({
                     "event": "error",
                     "data": {"message": f"Unknown event type: {event}"}
@@ -64,16 +81,23 @@ class ChatConsumer(AsyncWebsocketConsumer):
         
         except json.JSONDecodeError as e:
             logger.error(f"❌ [RECEIVE] Failed to decode JSON: {str(e)}")
-            await self.send(json.dumps({
-                "event": "error",
-                "data": {"message": "Invalid JSON format"}
-            }))
+            logger.error(f"❌ [RECEIVE] Raw data was: {text_data}")
+            try:
+                await self.send(json.dumps({
+                    "event": "error",
+                    "data": {"message": "Invalid JSON format"}
+                }))
+            except Exception as send_err:
+                logger.error(f"❌ [RECEIVE] Failed to send error response: {str(send_err)}")
         except Exception as e:
-            logger.error(f"❌ [RECEIVE] Error in receive: {str(e)}", exc_info=True)
-            await self.send(json.dumps({
-                "event": "error",
-                "data": {"message": f"Server error: {str(e)}"}
-            }))
+            logger.error(f"❌ [RECEIVE] Unexpected error in receive: {str(e)}", exc_info=True)
+            try:
+                await self.send(json.dumps({
+                    "event": "error",
+                    "data": {"message": f"Server error: {str(e)}"}
+                }))
+            except Exception as send_err:
+                logger.error(f"❌ [RECEIVE] Failed to send error response: {str(send_err)}")
 
     async def handle_send_message(self, data):
         """Handle text message sending"""
@@ -168,9 +192,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def has_room_access(self):
         """Check if user is a participant in this chat room"""
         try:
+            logger.info(f"🔐 [HAS_ROOM_ACCESS] Checking access - Room: {self.room_id}, User: {self.user.id}")
             room = ChatRoom.objects.get(id=self.room_id)
-            return room.user_a == self.user or room.user_b == self.user
+            logger.info(f"🔐 [HAS_ROOM_ACCESS] Room found: user_a={room.user_a.id}, user_b={room.user_b.id}")
+            has_access = room.user_a == self.user or room.user_b == self.user
+            logger.info(f"🔐 [HAS_ROOM_ACCESS] Access result: {has_access}")
+            return has_access
         except ChatRoom.DoesNotExist:
+            logger.error(f"❌ [HAS_ROOM_ACCESS] Chat room {self.room_id} does not exist")
+            return False
+        except Exception as e:
+            logger.error(f"❌ [HAS_ROOM_ACCESS] Error checking access: {str(e)}", exc_info=True)
             return False
 
     @database_sync_to_async
@@ -295,21 +327,42 @@ class ChatConsumer(AsyncWebsocketConsumer):
     # Handler methods for channel layer messages
     async def new_message_broadcast(self, event):
         """Send incoming message event to WebSocket"""
-        await self.send(json.dumps({
-            "event": "new_message",
-            "data": event["data"]
-        }))
+        logger.warning(f"📤 [NEW_MESSAGE_BROADCAST] Handler called with event: {event}")
+        try:
+            response = {
+                "event": "new_message",
+                "data": event["data"]
+            }
+            logger.info(f"📤 [NEW_MESSAGE_BROADCAST] Sending to WebSocket: {response}")
+            await self.send(json.dumps(response))
+            logger.warning(f"✅ [NEW_MESSAGE_BROADCAST] Message sent successfully")
+        except Exception as e:
+            logger.error(f"❌ [NEW_MESSAGE_BROADCAST] Error sending message: {str(e)}", exc_info=True)
 
     async def media_message_broadcast(self, event):
         """Send media message event to WebSocket"""
-        await self.send(json.dumps({
-            "event": "media_message",
-            "data": event["data"]
-        }))
+        logger.warning(f"📤 [MEDIA_MESSAGE_BROADCAST] Handler called with event: {event}")
+        try:
+            response = {
+                "event": "media_message",
+                "data": event["data"]
+            }
+            logger.info(f"📤 [MEDIA_MESSAGE_BROADCAST] Sending to WebSocket: {response}")
+            await self.send(json.dumps(response))
+            logger.warning(f"✅ [MEDIA_MESSAGE_BROADCAST] Message sent successfully")
+        except Exception as e:
+            logger.error(f"❌ [MEDIA_MESSAGE_BROADCAST] Error sending message: {str(e)}", exc_info=True)
 
     async def media_message(self, event):
         """Alternative handler for media messages from API"""
-        await self.send(json.dumps({
-            "event": "media_message",
-            "data": event.get("message", event.get("data"))
-        }))
+        logger.warning(f"📤 [MEDIA_MESSAGE] Handler called with event: {event}")
+        try:
+            response = {
+                "event": "media_message",
+                "data": event.get("message", event.get("data"))
+            }
+            logger.info(f"📤 [MEDIA_MESSAGE] Sending to WebSocket: {response}")
+            await self.send(json.dumps(response))
+            logger.warning(f"✅ [MEDIA_MESSAGE] Message sent successfully")
+        except Exception as e:
+            logger.error(f"❌ [MEDIA_MESSAGE] Error sending message: {str(e)}", exc_info=True)
