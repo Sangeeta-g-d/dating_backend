@@ -41,19 +41,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         """Handle incoming WebSocket messages"""
         try:
-            print(f"\n📨 [RECEIVE] Raw WebSocket data received: {text_data}")
+            logger.info(f"📨 [RECEIVE] Raw WebSocket data received: {text_data}")
             data = json.loads(text_data)
-            print(f"📨 [RECEIVE] Parsed JSON data: {data}")
+            logger.info(f"📨 [RECEIVE] Parsed JSON data: {data}")
             event = data.get("event")
-            print(f"📨 [RECEIVE] Event type: {event}")
+            logger.info(f"📨 [RECEIVE] Event type: {event}")
             
             if event == "send_message":
-                print(f"📨 [RECEIVE] send_message event detected")
+                logger.info(f"📨 [RECEIVE] send_message event detected")
                 message_data = data.get("data")
-                print(f"📨 [RECEIVE] Message data extracted: {message_data}")
+                logger.info(f"📨 [RECEIVE] Message data extracted: {message_data}")
                 await self.handle_send_message(message_data)
             elif event == "media_message":
-                print(f"📨 [RECEIVE] media_message event detected")
+                logger.info(f"📨 [RECEIVE] media_message event detected")
                 await self.handle_media_message(data.get("data"))
             else:
                 logger.warning(f"Unknown event type: {event}")
@@ -63,15 +63,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }))
         
         except json.JSONDecodeError as e:
-            print(f"❌ [RECEIVE] Failed to decode JSON: {str(e)}")
-            logger.error(f"Failed to decode WebSocket message: {str(e)}")
+            logger.error(f"❌ [RECEIVE] Failed to decode JSON: {str(e)}")
             await self.send(json.dumps({
                 "event": "error",
                 "data": {"message": "Invalid JSON format"}
             }))
         except Exception as e:
-            print(f"❌ [RECEIVE] Error in receive: {str(e)}")
-            logger.error(f"Error in receive: {str(e)}")
+            logger.error(f"❌ [RECEIVE] Error in receive: {str(e)}", exc_info=True)
             await self.send(json.dumps({
                 "event": "error",
                 "data": {"message": f"Server error: {str(e)}"}
@@ -80,14 +78,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def handle_send_message(self, data):
         """Handle text message sending"""
         try:
-            print(f"\n✉️ [SEND_MESSAGE] Handler called with data: {data}")
-            print(f"✉️ [SEND_MESSAGE] Data type: {type(data)}")
-            print(f"✉️ [SEND_MESSAGE] Data is None: {data is None}")
+            logger.info(f"✉️ [SEND_MESSAGE] Handler called with data: {data}")
+            logger.info(f"✉️ [SEND_MESSAGE] Data type: {type(data)}")
+            logger.info(f"✉️ [SEND_MESSAGE] Data is None: {data is None}")
             
             # Validate data exists
             if not data:
-                print(f"❌ [SEND_MESSAGE] Data is None or empty")
-                logger.error("Data is None or empty in handle_send_message")
+                logger.error("❌ [SEND_MESSAGE] Data is None or empty")
                 await self.send(json.dumps({
                     "event": "error",
                     "data": {"message": "Missing required fields - data is empty"}
@@ -99,20 +96,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
             content = data.get("content")
             attachments = data.get("attachments")
 
-            print(f"✉️ [SEND_MESSAGE] Extracted fields:")
-            print(f"   - roomId: {room_id} (type: {type(room_id)})")
-            print(f"   - type: {message_type} (type: {type(message_type)})")
-            print(f"   - content: {content} (type: {type(content)})")
-            print(f"   - attachments: {attachments}")
+            logger.info(f"✉️ [SEND_MESSAGE] Extracted fields:")
+            logger.info(f"   - roomId: {room_id} (type: {type(room_id).__name__})")
+            logger.info(f"   - type: {message_type} (type: {type(message_type).__name__})")
+            logger.info(f"   - content: {content} (type: {type(content).__name__})")
+            logger.info(f"   - attachments: {attachments}")
 
             # Validate required fields
-            print(f"✉️ [SEND_MESSAGE] Validation checks:")
-            print(f"   - room_id bool: {bool(room_id)}")
-            print(f"   - message_type bool: {bool(message_type)}")
-            print(f"   - content bool: {bool(content)}")
+            logger.info(f"✉️ [SEND_MESSAGE] Validation checks:")
+            logger.info(f"   - room_id bool: {bool(room_id)}")
+            logger.info(f"   - message_type bool: {bool(message_type)}")
+            logger.info(f"   - content bool: {bool(content)}")
             
             if not room_id or not message_type or not content:
-                print(f"❌ [SEND_MESSAGE] Validation failed - missing fields")
+                logger.error(f"❌ [SEND_MESSAGE] Validation failed - missing fields")
                 logger.error(f"Missing fields - room_id: {room_id}, type: {message_type}, content: {content}")
                 await self.send(json.dumps({
                     "event": "error",
@@ -120,36 +117,33 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }))
                 return
 
-            print(f"✉️ [SEND_MESSAGE] Validation passed - creating message")
+            logger.info(f"✉️ [SEND_MESSAGE] Validation passed - creating message")
 
             # Create message in database
             message = await self.create_message(room_id, message_type, content, attachments)
             
             if not message:
-                print(f"❌ [SEND_MESSAGE] Failed to create message")
+                logger.error(f"❌ [SEND_MESSAGE] Failed to create message")
                 await self.send(json.dumps({
                     "event": "error",
                     "data": {"message": "Failed to create message"}
                 }))
                 return
 
-            print(f"✉️ [SEND_MESSAGE] Message created successfully - ID: {message.id}")
+            logger.info(f"✉️ [SEND_MESSAGE] Message created successfully - ID: {message.id}")
 
             # Create message receipts for both participants
-            print(f"✉️ [SEND_MESSAGE] Creating message receipts")
+            logger.info(f"✉️ [SEND_MESSAGE] Creating message receipts")
             await self.create_message_receipts(message.id)
-            print(f"✉️ [SEND_MESSAGE] Message receipts created")
+            logger.info(f"✉️ [SEND_MESSAGE] Message receipts created")
 
             # Broadcast new message event to room
-            print(f"✉️ [SEND_MESSAGE] Broadcasting message to room {room_id}")
+            logger.info(f"✉️ [SEND_MESSAGE] Broadcasting message to room {room_id}")
             await self.broadcast_new_message(message)
-            print(f"✉️ [SEND_MESSAGE] Message broadcasted successfully")
+            logger.info(f"✉️ [SEND_MESSAGE] Message broadcasted successfully")
 
         except Exception as e:
-            print(f"❌ [SEND_MESSAGE] Exception occurred: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            logger.error(f"Error in handle_send_message: {str(e)}")
+            logger.error(f"❌ [SEND_MESSAGE] Exception occurred: {str(e)}", exc_info=True)
             await self.send(json.dumps({
                 "event": "error",
                 "data": {"message": str(e)}
@@ -183,27 +177,27 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def create_message(self, room_id, message_type, content, attachments=None):
         """Create a message in the database"""
         try:
-            print(f"\n💾 [CREATE_MESSAGE] Starting message creation")
-            print(f"   - room_id: {room_id}")
-            print(f"   - message_type: {message_type}")
-            print(f"   - content: {content}")
-            print(f"   - sender: {self.user}")
+            logger.info(f"💾 [CREATE_MESSAGE] Starting message creation")
+            logger.info(f"   - room_id: {room_id}")
+            logger.info(f"   - message_type: {message_type}")
+            logger.info(f"   - content: {content}")
+            logger.info(f"   - sender: {self.user}")
             
             room = ChatRoom.objects.get(id=room_id)
-            print(f"💾 [CREATE_MESSAGE] Room found: {room}")
+            logger.info(f"💾 [CREATE_MESSAGE] Room found: {room}")
             
             # Encrypt text content if it's a text message
             encrypted_content = None
             if message_type == "text" and content:
-                print(f"💾 [CREATE_MESSAGE] Encrypting text content")
+                logger.info(f"💾 [CREATE_MESSAGE] Encrypting text content")
                 encrypted_content = encrypt_text(content)
-                print(f"💾 [CREATE_MESSAGE] Text encrypted successfully")
+                logger.info(f"💾 [CREATE_MESSAGE] Text encrypted successfully")
             
-            print(f"💾 [CREATE_MESSAGE] Creating Message object with:")
-            print(f"   - room: {room}")
-            print(f"   - sender: {self.user}")
-            print(f"   - content_encrypted: {encrypted_content[:20] if encrypted_content else 'None'}...")
-            print(f"   - media_type: {message_type if message_type in ['image', 'video'] else ''}")
+            logger.info(f"💾 [CREATE_MESSAGE] Creating Message object with:")
+            logger.info(f"   - room: {room}")
+            logger.info(f"   - sender: {self.user}")
+            logger.info(f"   - content_encrypted: {encrypted_content[:20] if encrypted_content else 'None'}...")
+            logger.info(f"   - media_type: {message_type if message_type in ['image', 'video'] else ''}")
             
             message = Message.objects.create(
                 room=room,
@@ -213,28 +207,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 created_at=timezone.now(),
             )
             
-            print(f"💾 [CREATE_MESSAGE] Message created successfully - ID: {message.id}")
+            logger.info(f"💾 [CREATE_MESSAGE] Message created successfully - ID: {message.id}")
             return message
         except ChatRoom.DoesNotExist:
-            print(f"❌ [CREATE_MESSAGE] Chat room {room_id} does not exist")
-            logger.error(f"Chat room {room_id} does not exist")
+            logger.error(f"❌ [CREATE_MESSAGE] Chat room {room_id} does not exist")
             return None
         except Exception as e:
-            print(f"❌ [CREATE_MESSAGE] Error creating message: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            logger.error(f"Error creating message: {str(e)}")
+            logger.error(f"❌ [CREATE_MESSAGE] Error creating message: {str(e)}", exc_info=True)
             return None
 
     @database_sync_to_async
     def create_message_receipts(self, message_id):
         """Create message receipts for all participants"""
         try:
-            print(f"\n📋 [CREATE_RECEIPTS] Creating receipts for message {message_id}")
+            logger.info(f"📋 [CREATE_RECEIPTS] Creating receipts for message {message_id}")
             message = Message.objects.get(id=message_id)
             room = message.room
             
-            print(f"📋 [CREATE_RECEIPTS] Room participants: {room.participants()}")
+            logger.info(f"📋 [CREATE_RECEIPTS] Room participants: {room.participants()}")
             
             # Create receipt for both participants
             for user in room.participants():
@@ -242,23 +232,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     message=message,
                     user=user
                 )
-                print(f"📋 [CREATE_RECEIPTS] Receipt for {user.email}: {'created' if created else 'exists'}")
+                logger.info(f"📋 [CREATE_RECEIPTS] Receipt for {user.email}: {'created' if created else 'exists'}")
             
-            print(f"📋 [CREATE_RECEIPTS] All receipts created successfully")
+            logger.info(f"📋 [CREATE_RECEIPTS] All receipts created successfully")
         except Exception as e:
-            print(f"❌ [CREATE_RECEIPTS] Error: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            logger.error(f"Error creating message receipts: {str(e)}")
+            logger.error(f"❌ [CREATE_RECEIPTS] Error: {str(e)}", exc_info=True)
 
     async def broadcast_new_message(self, message):
         """Broadcast new message event to all users in the room"""
         try:
-            print(f"\n📡 [BROADCAST] Starting broadcast for message {message.id}")
+            logger.info(f"📡 [BROADCAST] Starting broadcast for message {message.id}")
             message_data = await self.format_message_data(message)
-            print(f"📡 [BROADCAST] Formatted message data: {message_data}")
+            logger.info(f"📡 [BROADCAST] Formatted message data: {message_data}")
             
-            print(f"📡 [BROADCAST] Broadcasting to group: {self.room_group_name}")
+            logger.info(f"📡 [BROADCAST] Broadcasting to group: {self.room_group_name}")
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
@@ -266,34 +253,31 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "data": message_data
                 }
             )
-            print(f"📡 [BROADCAST] Message broadcast successful")
+            logger.info(f"📡 [BROADCAST] Message broadcast successful")
         except Exception as e:
-            print(f"❌ [BROADCAST] Error: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            logger.error(f"Error broadcasting message: {str(e)}")
+            logger.error(f"❌ [BROADCAST] Error: {str(e)}", exc_info=True)
 
     @database_sync_to_async
     def format_message_data(self, message):
         """Format message data according to the specified format"""
-        print(f"\n📝 [FORMAT_MESSAGE] Formatting message {message.id}")
+        logger.info(f"📝 [FORMAT_MESSAGE] Formatting message {message.id}")
         sender = message.sender
         content = ""
         
-        print(f"📝 [FORMAT_MESSAGE] Message details:")
-        print(f"   - sender: {sender.email}")
-        print(f"   - media_type: {message.media_type}")
-        print(f"   - is_deleted: {message.is_deleted}")
-        print(f"   - has encrypted content: {bool(message.content_encrypted)}")
+        logger.info(f"📝 [FORMAT_MESSAGE] Message details:")
+        logger.info(f"   - sender: {sender.email}")
+        logger.info(f"   - media_type: {message.media_type}")
+        logger.info(f"   - is_deleted: {message.is_deleted}")
+        logger.info(f"   - has encrypted content: {bool(message.content_encrypted)}")
         
         if message.media_type == "text" and message.content_encrypted:
             from .models import decrypt_text
             try:
-                print(f"📝 [FORMAT_MESSAGE] Decrypting content...")
+                logger.info(f"📝 [FORMAT_MESSAGE] Decrypting content...")
                 content = decrypt_text(message.content_encrypted)
-                print(f"📝 [FORMAT_MESSAGE] Decrypted content: {content}")
+                logger.info(f"📝 [FORMAT_MESSAGE] Decrypted content: {content}")
             except Exception as decrypt_err:
-                print(f"📝 [FORMAT_MESSAGE] Decryption failed: {str(decrypt_err)}")
+                logger.error(f"📝 [FORMAT_MESSAGE] Decryption failed: {str(decrypt_err)}")
                 content = ""
         
         formatted_data = {
@@ -305,7 +289,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "createdAt": format_to_ist(message.created_at)
         }
         
-        print(f"📝 [FORMAT_MESSAGE] Formatted data: {formatted_data}")
+        logger.info(f"📝 [FORMAT_MESSAGE] Formatted data: {formatted_data}")
         return formatted_data
 
     # Handler methods for channel layer messages
