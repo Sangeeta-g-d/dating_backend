@@ -42,6 +42,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         """Handle incoming WebSocket messages"""
         try:
             data = json.loads(text_data)
+            logger.debug(f"Received WebSocket data: {data}")
             event = data.get("event")
             
             if event == "send_message":
@@ -50,25 +51,49 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await self.handle_media_message(data.get("data"))
             else:
                 logger.warning(f"Unknown event type: {event}")
+                await self.send(json.dumps({
+                    "event": "error",
+                    "data": {"message": f"Unknown event type: {event}"}
+                }))
         
-        except json.JSONDecodeError:
-            logger.error("Failed to decode WebSocket message")
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to decode WebSocket message: {str(e)}")
+            await self.send(json.dumps({
+                "event": "error",
+                "data": {"message": "Invalid JSON format"}
+            }))
         except Exception as e:
             logger.error(f"Error in receive: {str(e)}")
+            await self.send(json.dumps({
+                "event": "error",
+                "data": {"message": f"Server error: {str(e)}"}
+            }))
 
     async def handle_send_message(self, data):
         """Handle text message sending"""
         try:
+            # Validate data exists
+            if not data:
+                logger.error("Data is None or empty in handle_send_message")
+                await self.send(json.dumps({
+                    "event": "error",
+                    "data": {"message": "Missing required fields"}
+                }))
+                return
+
             room_id = data.get("roomId")
             message_type = data.get("type")  # "text", "image", "video"
             content = data.get("content")
             attachments = data.get("attachments")
 
+            logger.debug(f"Received message - room_id: {room_id}, type: {message_type}, content: {content}")
+
             # Validate required fields
             if not room_id or not message_type or not content:
+                logger.error(f"Missing fields - room_id: {room_id}, type: {message_type}, content: {content}")
                 await self.send(json.dumps({
                     "event": "error",
-                    "data": {"message": "Missing required fields"}
+                    "data": {"message": "Missing required fields: roomId, type, and content are required"}
                 }))
                 return
 
