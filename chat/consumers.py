@@ -235,7 +235,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 room=room,
                 sender=self.user,
                 content_encrypted=encrypted_content,
-                media_type=message_type if message_type in ["image", "video"] else "",
+                media_type=message_type if message_type in ["image", "video"] else "text",
                 created_at=timezone.now(),
             )
             
@@ -298,19 +298,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
         
         logger.info(f"📝 [FORMAT_MESSAGE] Message details:")
         logger.info(f"   - sender: {sender.email}")
-        logger.info(f"   - media_type: {message.media_type}")
+        logger.info(f"   - media_type: '{message.media_type}'")
         logger.info(f"   - is_deleted: {message.is_deleted}")
-        logger.info(f"   - has encrypted content: {bool(message.content_encrypted)}")
+        logger.info(f"   - content_encrypted: {message.content_encrypted[:50] if message.content_encrypted else 'None'}...")
         
-        if message.media_type == "text" and message.content_encrypted:
+        # Decrypt text if it has encrypted content
+        if message.content_encrypted:
             from .models import decrypt_text
             try:
-                logger.info(f"📝 [FORMAT_MESSAGE] Decrypting content...")
+                logger.info(f"📝 [FORMAT_MESSAGE] Attempting to decrypt content...")
                 content = decrypt_text(message.content_encrypted)
-                logger.info(f"📝 [FORMAT_MESSAGE] Decrypted content: {content}")
+                logger.warning(f"✅ [FORMAT_MESSAGE] Successfully decrypted: {content}")
             except Exception as decrypt_err:
-                logger.error(f"📝 [FORMAT_MESSAGE] Decryption failed: {str(decrypt_err)}")
+                logger.error(f"❌ [FORMAT_MESSAGE] Decryption failed: {str(decrypt_err)}", exc_info=True)
                 content = ""
+        else:
+            logger.warning(f"⚠️ [FORMAT_MESSAGE] No encrypted content to decrypt")
         
         formatted_data = {
             "messageId": message.id,
