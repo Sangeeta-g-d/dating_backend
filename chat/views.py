@@ -266,6 +266,36 @@ class MediaMessageUploadAPIView(APIView):
             }
         )
 
+        # Broadcast inbox update to the other user
+        other_user = room.user_a if room.user_b == user else room.user_b
+        unseen_count = MessageReceipt.objects.filter(
+            message__room_id=room_id,
+            user_id=other_user.id,
+            seen_at__isnull=True
+        ).count()
+
+        sender_data = {
+            "id": user.id,
+            "full_name": user.full_name,
+            "profile_photo": user.profile_photo.url if user.profile_photo else None
+        }
+
+        inbox_update_data = {
+            "room_id": room_id,
+            "user": sender_data,
+            "last_message": f"[{message.media_type.upper()} Message]",
+            "last_message_time": format_to_ist(message.created_at),
+            "unseen_count": unseen_count
+        }
+
+        async_to_sync(channel_layer.group_send)(
+            f"inbox_{other_user.id}",
+            {
+                "type": "inbox_update_broadcast",
+                "data": inbox_update_data,
+            }
+        )
+
         # Final API Response (also in standardized format)
         return Response({
             "status": 200,

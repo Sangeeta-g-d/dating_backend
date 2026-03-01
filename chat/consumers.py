@@ -170,6 +170,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
             logger.info(f"✉️ [SEND_MESSAGE] Broadcasting message to room {room_id}")
             await self.broadcast_new_message(message)
             logger.info(f"✉️ [SEND_MESSAGE] Message broadcasted successfully")
+            
+            # Broadcast inbox update to the other user
+            logger.info(f"✉️ [SEND_MESSAGE] Broadcasting inbox update")
+            await self.broadcast_inbox_update(room_id)
+            logger.info(f"✉️ [SEND_MESSAGE] Inbox update broadcasted")
 
         except Exception as e:
             logger.error(f"❌ [SEND_MESSAGE] Exception occurred: {str(e)}", exc_info=True)
@@ -190,6 +195,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "data": data
                 }
             )
+            # Broadcast inbox update
+            room_id = data.get("roomId")
+            if room_id:
+                await self.broadcast_inbox_update(room_id)
         except Exception as e:
             logger.error(f"Error in handle_media_message: {str(e)}")
 
@@ -482,3 +491,189 @@ class ChatConsumer(AsyncWebsocketConsumer):
             logger.warning(f"✅ [MESSAGES_SEEN_BROADCAST] Seen event sent successfully")
         except Exception as e:
             logger.error(f"❌ [MESSAGES_SEEN_BROADCAST] Error sending seen event: {str(e)}", exc_info=True)
+
+    @database_sync_to_async
+    def get_other_user_in_room(self, room_id):
+        """Get the other user in the chat room"""
+        try:
+            room = ChatRoom.objects.get(id=room_id)
+            if room.user_a == self.user:
+                return room.user_b
+            else:
+                return room.user_a
+        except ChatRoom.DoesNotExist:
+            logger.error(f"❌ [GET_OTHER_USER] Room {room_id} does not exist")
+            return None
+
+    @database_sync_to_async
+    def get_latest_message(self, room_id):
+        """Get the latest message in room"""
+        try:
+            return Message.objects.filter(room_id=room_id).order_by('-created_at').first()
+        except Exception as e:
+            logger.error(f"❌ [GET_LATEST_MESSAGE] Error: {str(e)}", exc_info=True)
+            return None
+
+    @database_sync_to_async
+    def count_unseen_messages(self, room_id, receiver_id):
+        """Count unseen messages for receiver"""
+        try:
+            return MessageReceipt.objects.filter(
+                message__room_id=room_id,
+                user_id=receiver_id,
+                seen_at__isnull=True
+            ).count()
+        except Exception as e:
+            logger.error(f"❌ [COUNT_UNSEEN] Error: {str(e)}", exc_info=True)
+            return 0
+
+    async def broadcast_inbox_update(self, room_id):
+        """Broadcast inbox update to the other user in the chat"""
+        try:
+            logger.info(f"📬 [INBOX_UPDATE] Starting inbox update broadcast for room {room_id}")
+            
+            # Get the other user
+            other_user = await self.get_other_user_in_room(room_id)
+            if not other_user:
+                logger.error(f"❌ [INBOX_UPDATE] Could not get other user")
+                return
+            
+            # Get latest message
+            latest_message = await self.get_latest_message(room_id)
+            if not latest_message:
+                logger.error(f"❌ [INBOX_UPDATE] No latest message found")
+                return
+            
+            # Count unseen messages for the other user
+            unseen_count = await self.count_unseen_messages(room_id, other_user.id)
+            logger.info(f"📬 [INBOX_UPDATE] Unseen count for user {other_user.id}: {unseen_count}")
+            
+            # Format sender info (the person who sent the message)
+            sender_data = {
+                "id": self.user.id,
+                "full_name": self.user.full_name,
+                "profile_photo": self.user.profile_photo.url if self.user.profile_photo else None
+            }
+            logger.info(f"📬 [INBOX_UPDATE] Sender data: {sender_data}")
+            
+            # Get message content
+            message_content = ""
+            if latest_message.content_encrypted:
+                try:
+                    from .models import decrypt_text
+                    message_content = decrypt_text(latest_message.content_encrypted)
+                    logger.info(f"📬 [INBOX_UPDATE] Decrypted message content")
+                except Exception as decrypt_err:
+                    logger.error(f"❌ [INBOX_UPDATE] Decryption failed: {str(decrypt_err)}", exc_info=True)
+                    message_content = "[Message]"
+            elif latest_message.media_type in ["image", "video"]:
+                message_content = f"[{latest_message.media_type.upper()} Message]"
+                logger.info(f"📬 [INBOX_UPDATE] Media message type: {latest_message.media_type}")
+            
+            # Create inbox update data
+            inbox_update_data = {
+                "room_id": room_id,
+                "user": sender_data,
+                "last_message": message_content,
+                "last_message_time": format_to_ist(latest_message.created_at),
+                "unseen_count": unseen_count
+            }
+            
+            logger.info(f"📬 [INBOX_UPDATE] Broadcasting to inbox_{other_user.id}")
+            logger.info(f"📬 [INBOX_UPDATE] Inbox data: {inbox_update_data}")
+            
+            # Broadcast to inbox channel
+            await self.channel_layer.group_send(
+                f"inbox_{other_user.id}",
+                {
+                    "type": "inbox_update_broadcast",
+                    "data": inbox_update_data
+                }
+            )
+            
+            logger.warning(f"✅ [INBOX_UPDATE] Inbox update broadcasted successfully")
+            
+        except Exception as e:
+            logger.error(f"❌ [INBOX_UPDATE] Error broadcasting inbox update: {str(e)}", exc_info=True)
+
+    async def inbox_update_broadcast(self, event):
+        """Handle inbox_update broadcast event"""
+        logger.warning(f"📬 [INBOX_UPDATE_BROADCAST] Handler called with event")
+        try:
+            response = {
+                "event": "inbox_update",
+                "data": event["data"]
+            }
+            logger.info(f"📬 [INBOX_UPDATE_BROADCAST] Sending to WebSocket: {response}")
+            await self.send(json.dumps(response))
+            logger.warning(f"✅ [INBOX_UPDATE_BROADCAST] Inbox update sent successfully")
+        except Exception as e:
+            logger.error(f"❌ [INBOX_UPDATE_BROADCAST] Error sending inbox update: {str(e)}", exc_info=True)
+
+
+class InboxConsumer(AsyncWebsocketConsumer):
+    """
+    WebSocket consumer for app-level inbox updates.
+    Users connect to receive notifications whenever they receive a new message.
+    """
+
+    async def connect(self):
+        """Connect user to their inbox channel"""
+        logger.warning(f"📬 [INBOX_CONNECT] ===== INBOX CONNECT METHOD START =====")
+        self.user = self.scope["user"]
+        self.inbox_channel = f"inbox_{self.user.id}"
+
+        logger.warning(f"📬 [INBOX_CONNECT] User: {self.user}")
+        logger.warning(f"📬 [INBOX_CONNECT] Is Authenticated: {self.user.is_authenticated}")
+        logger.warning(f"📬 [INBOX_CONNECT] Inbox Channel: {self.inbox_channel}")
+
+        if isinstance(self.user, AnonymousUser) or not self.user.is_authenticated:
+            logger.warning(f"❌ [INBOX_CONNECT] Authentication failed - User is anonymous or not authenticated")
+            await self.close(code=4001)
+            return
+
+        try:
+            await self.channel_layer.group_add(self.inbox_channel, self.channel_name)
+            await self.accept()
+            logger.warning(f"✅ [INBOX_CONNECT] User {self.user.id} connected to inbox")
+            logger.warning(f"✅ [INBOX_CONNECT] Channel name: {self.channel_name}")
+        except Exception as e:
+            logger.error(f"❌ [INBOX_CONNECT] Error connecting: {str(e)}", exc_info=True)
+            await self.close(code=1011)
+
+    async def disconnect(self, close_code):
+        """Disconnect user from inbox channel"""
+        logger.warning(f"📬 [INBOX_DISCONNECT] ===== INBOX DISCONNECT METHOD CALLED =====")
+        logger.warning(f"📬 [INBOX_DISCONNECT] Close code: {close_code}")
+        logger.warning(f"📬 [INBOX_DISCONNECT] User: {self.user}")
+        try:
+            await self.channel_layer.group_discard(self.inbox_channel, self.channel_name)
+            logger.warning(f"✅ [INBOX_DISCONNECT] User {self.user.id} removed from group {self.inbox_channel}")
+        except Exception as e:
+            logger.error(f"❌ [INBOX_DISCONNECT] Error during disconnect: {str(e)}", exc_info=True)
+
+    async def receive(self, text_data):
+        """Handle incoming messages (if any from client)"""
+        logger.warning(f"📬 [INBOX_RECEIVE] Raw data received: {text_data}")
+        # Inbox consumer mainly receives server-sent events, but can handle keep-alive pings
+        try:
+            data = json.loads(text_data)
+            if data.get("type") == "ping":
+                await self.send(json.dumps({"type": "pong"}))
+                logger.info(f"📬 [INBOX_RECEIVE] Pong sent")
+        except Exception as e:
+            logger.error(f"❌ [INBOX_RECEIVE] Error: {str(e)}", exc_info=True)
+
+    async def inbox_update_broadcast(self, event):
+        """Handle inbox_update broadcast events from channel layer"""
+        logger.warning(f"📬 [INBOX_UPDATE_BROADCAST] Handler called with event")
+        try:
+            response = {
+                "event": "inbox_update",
+                "data": event["data"]
+            }
+            logger.info(f"📬 [INBOX_UPDATE_BROADCAST] Sending to WebSocket: {response}")
+            await self.send(json.dumps(response))
+            logger.warning(f"✅ [INBOX_UPDATE_BROADCAST] Inbox update sent to user {self.user.id}")
+        except Exception as e:
+            logger.error(f"❌ [INBOX_UPDATE_BROADCAST] Error sending inbox update: {str(e)}", exc_info=True)
