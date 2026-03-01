@@ -72,6 +72,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
             elif event == "media_message":
                 logger.info(f"📨 [RECEIVE] media_message event detected")
                 await self.handle_media_message(data.get("data"))
+            elif event == "mark_seen":
+                logger.info(f"📨 [RECEIVE] mark_seen event detected")
+                mark_seen_data = data.get("data")
+                logger.info(f"📨 [RECEIVE] Mark seen data extracted: {mark_seen_data}")
+                await self.handle_mark_seen(mark_seen_data)
             else:
                 logger.warning(f"🔔 [RECEIVE] Unknown event type: {event}")
                 await self.send(json.dumps({
@@ -187,6 +192,38 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
         except Exception as e:
             logger.error(f"Error in handle_media_message: {str(e)}")
+
+    async def handle_mark_seen(self, data):
+        """Mark messages as seen and broadcast"""
+        try:
+            logger.info(f"👁️ [MARK_SEEN] Handling mark_seen event")
+            room_id = data.get("roomId")
+            last_seen_message_id = data.get("lastSeenMessageId")
+            
+            logger.info(f"👁️ [MARK_SEEN] room_id: {room_id}, last_seen_message_id: {last_seen_message_id}")
+            
+            if not room_id or not last_seen_message_id:
+                logger.error(f"❌ [MARK_SEEN] Missing required fields")
+                await self.send(json.dumps({
+                    "event": "error",
+                    "data": {"message": "Missing required fields: roomId and lastSeenMessageId"}
+                }))
+                return
+            
+            # Mark messages as seen in database
+            await self.mark_messages_as_seen(room_id, last_seen_message_id)
+            
+            # Broadcast seen status to room
+            await self.broadcast_messages_seen(room_id, last_seen_message_id)
+            
+            logger.info(f"✅ [MARK_SEEN] Messages marked as seen and broadcasted")
+            
+        except Exception as e:
+            logger.error(f"❌ [MARK_SEEN] Error: {str(e)}", exc_info=True)
+            await self.send(json.dumps({
+                "event": "error",
+                "data": {"message": str(e)}
+            }))
 
     @database_sync_to_async
     def has_room_access(self):
@@ -327,6 +364,61 @@ class ChatConsumer(AsyncWebsocketConsumer):
         logger.info(f"📝 [FORMAT_MESSAGE] Formatted data: {formatted_data}")
         return formatted_data
 
+    @database_sync_to_async
+    def mark_messages_as_seen(self, room_id, last_seen_message_id):
+        """Mark messages as seen in database"""
+        try:
+            logger.info(f"👁️ [DB_MARK_SEEN] Marking messages as seen up to {last_seen_message_id}")
+            
+            # Get all messages up to and including the last_seen_message_id
+            messages = Message.objects.filter(
+                room_id=room_id,
+                id__lte=last_seen_message_id
+            ).exclude(sender=self.user)  # Don't mark own messages
+            
+            logger.info(f"👁️ [DB_MARK_SEEN] Found {messages.count()} messages to mark as seen")
+            
+            # Mark each message as seen
+            for message in messages:
+                try:
+                    receipt = MessageReceipt.objects.get(message=message, user=self.user)
+                    receipt.mark_seen()
+                    logger.info(f"👁️ [DB_MARK_SEEN] Message {message.id} marked as seen for user {self.user.id}")
+                except MessageReceipt.DoesNotExist:
+                    logger.warning(f"⚠️ [DB_MARK_SEEN] No receipt found for message {message.id} and user {self.user.id}")
+            
+            logger.info(f"✅ [DB_MARK_SEEN] All messages marked as seen in database")
+            
+        except Exception as e:
+            logger.error(f"❌ [DB_MARK_SEEN] Error marking messages as seen: {str(e)}", exc_info=True)
+
+    async def broadcast_messages_seen(self, room_id, last_seen_message_id):
+        """Broadcast that messages have been seen"""
+        try:
+            logger.info(f"📡 [BROADCAST_SEEN] Broadcasting messages_seen event")
+            
+            seen_data = {
+                "roomId": room_id,
+                "userId": self.user.id,
+                "lastSeenMessageId": last_seen_message_id,
+                "seenAt": timezone.now().isoformat()
+            }
+            
+            logger.info(f"📡 [BROADCAST_SEEN] Sending to group: {seen_data}")
+            
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    "type": "messages_seen_broadcast",
+                    "data": seen_data
+                }
+            )
+            
+            logger.info(f"✅ [BROADCAST_SEEN] messages_seen broadcasted successfully")
+            
+        except Exception as e:
+            logger.error(f"❌ [BROADCAST_SEEN] Error broadcasting: {str(e)}", exc_info=True)
+
     # Handler methods for channel layer messages
     async def new_message_broadcast(self, event):
         """Send incoming message event to WebSocket"""
@@ -369,3 +461,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
             logger.warning(f"✅ [MEDIA_MESSAGE] Message sent successfully")
         except Exception as e:
             logger.error(f"❌ [MEDIA_MESSAGE] Error sending message: {str(e)}", exc_info=True)
+
+    async def messages_seen_broadcast(self, event):
+        """Handle messages_seen broadcast event"""
+        logger.warning(f"👁️ [MESSAGES_SEEN_BROADCAST] Handler called with event: {event}")
+        try:
+            response = {
+                "event": "messages_seen",
+                "data": event["data"]
+            }
+            logger.info(f"👁️ [MESSAGES_SEEN_BROADCAST] Sending to WebSocket: {response}")
+            await self.send(json.dumps(response))
+            logger.warning(f"✅ [MESSAGES_SEEN_BROADCAST] Seen event sent successfully")
+        except Exception as e:
+            logger.error(f"❌ [MESSAGES_SEEN_BROADCAST] Error sending seen event: {str(e)}", exc_info=True)
