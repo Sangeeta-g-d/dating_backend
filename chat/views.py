@@ -246,33 +246,27 @@ class MediaMessageUploadAPIView(APIView):
                 user=participant
             )
 
-        # Format message response
+        # Format message response in standardized format (matching new_message format)
         message_data = {
-            "id": message.id,
-            "room_id": room.id,
-            "sender": {
-                "id": user.id,
-                "email": user.email,
-                "full_name": user.full_name if hasattr(user, "full_name") else "",
-                "profile_image": request.build_absolute_uri(user.profile_image.url) if getattr(user, "profile_image", None) else None
-            },
-            "media_url": request.build_absolute_uri(message.media.url),
-            "media_type": message.media_type,
-            "created_at": format_to_ist(message.created_at),
-            "is_deleted": message.is_deleted,
+            "messageId": message.id,
+            "sender_id": user.id,
+            "type": message.media_type,
+            "content": "",  # No text content for media messages
+            "attachments": request.build_absolute_uri(message.media.url),
+            "createdAt": format_to_ist(message.created_at)
         }
 
-        # Broadcast via WebSocket
+        # Broadcast via WebSocket as new_message event
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             f"chat_{room_id}",
             {
-                "type": "media_message",
-                "message": message_data,
+                "type": "new_message_broadcast",
+                "data": message_data,
             }
         )
 
-        # Final API Response
+        # Final API Response (also in standardized format)
         return Response({
             "status": 200,
             "message": "Media message sent successfully",
