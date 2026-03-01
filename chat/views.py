@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.exceptions import NotFound
 from .models import ChatRoom, Message, MessageReceipt
 from .serializers import ChatRoomSerializer, MessageSerializer, ChatBackgroundSerializer, CallHistorySerializer, ChatHistorySerializer
 from .pagination import StandardResultsPagination
@@ -48,7 +49,34 @@ class ChatRoomHistoryAPIView(APIView):
             all_messages = Message.objects.filter(room=room).order_by("-created_at")
 
             paginator = StandardResultsPagination()
-            paginated_messages = paginator.paginate_queryset(all_messages, request)
+            
+            try:
+                paginated_messages = paginator.paginate_queryset(all_messages, request)
+            except NotFound:
+                # If page doesn't exist, return empty list with pagination info
+                page_num = request.query_params.get('page', 1)
+                try:
+                    page_num = int(page_num)
+                except (ValueError, TypeError):
+                    page_num = 1
+                
+                total_items = all_messages.count()
+                page_size = paginator.page_size
+                total_pages = (total_items + page_size - 1) // page_size
+                
+                return Response({
+                    "success": "200",
+                    "message": "Chat history fetched successfully",
+                    "Response": [],
+                    "pagination": {
+                        "current_page": page_num,
+                        "page_size": page_size,
+                        "total_items": total_items,
+                        "total_pages": total_pages,
+                        "has_next_page": False,
+                        "has_previous_page": page_num > 1
+                    }
+                }, status=status.HTTP_200_OK)
 
             # Use ChatHistorySerializer for the desired format
             msg_serializer = ChatHistorySerializer(
