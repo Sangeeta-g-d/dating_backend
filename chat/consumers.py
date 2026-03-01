@@ -378,14 +378,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
             
             logger.info(f"👁️ [DB_MARK_SEEN] Found {messages.count()} messages to mark as seen")
             
-            # Mark each message as seen
+            # Mark each message as seen for both receiver and sender
             for message in messages:
                 try:
-                    receipt = MessageReceipt.objects.get(message=message, user=self.user)
-                    receipt.mark_seen()
-                    logger.info(f"👁️ [DB_MARK_SEEN] Message {message.id} marked as seen for user {self.user.id}")
-                except MessageReceipt.DoesNotExist:
-                    logger.warning(f"⚠️ [DB_MARK_SEEN] No receipt found for message {message.id} and user {self.user.id}")
+                    # Update receiver's receipt (the user marking as seen)
+                    receiver_receipt = MessageReceipt.objects.get(message=message, user=self.user)
+                    receiver_receipt.mark_seen()
+                    logger.info(f"👁️ [DB_MARK_SEEN] Message {message.id} marked as seen for receiver {self.user.id}")
+                    
+                    # Also update sender's receipt so they see it as seen on their side
+                    sender_receipt = MessageReceipt.objects.get(message=message, user=message.sender)
+                    sender_receipt.mark_seen()
+                    logger.info(f"👁️ [DB_MARK_SEEN] Message {message.id} also marked as seen for sender {message.sender.id}")
+                    
+                except MessageReceipt.DoesNotExist as e:
+                    logger.warning(f"⚠️ [DB_MARK_SEEN] No receipt found for message {message.id}: {str(e)}")
             
             logger.info(f"✅ [DB_MARK_SEEN] All messages marked as seen in database")
             
