@@ -809,55 +809,147 @@ Lumivox App Team
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
-class ResetPasswordAPIView(APIView):
+class VerifyPasswordResetOTPAPIView(APIView):
     """
-    API to reset password using OTP sent via email.
-    Verifies OTP and updates the password.
+    API to verify OTP for password reset.
+    Returns success if OTP is valid and not expired.
     """
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = VerifyForgotPasswordOTPSerializer(data=request.data)
+        serializer = VerifyOTPSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.validated_data['email']
-            new_password = serializer.validated_data['new_password']
-            otp_record = serializer.validated_data['otp_record']
-            
+            otp = serializer.validated_data['otp']
+
+            # Get OTP record
+            try:
+                otp_record = EmailOTP.objects.filter(email=email, otp=otp, is_verified=False).latest("created_at")
+            except EmailOTP.DoesNotExist:
+                return Response({
+                    "status": "400",
+                    "message": "Invalid OTP",
+                    "Response": []
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check expiry
+            if otp_record.is_expired():
+                return Response({
+                    "status": "400",
+                    "message": "OTP expired",
+                    "Response": []
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Get user
             try:
                 user = CustomUser.objects.get(email=email)
-                
-                # Update password
-                user.set_password(new_password)
-                user.save(update_fields=['password'])
-                
-                # Mark OTP as verified
-                otp_record.is_verified = True
-                otp_record.save()
-                
-                return Response({
-                    "status": "200",
-                    "message": "Password reset successfully",
-                    "Response": {
-                        "email": user.email,
-                        "message": "Your password has been reset. Please login with your new password."
-                    }
-                }, status=status.HTTP_200_OK)
-                
             except CustomUser.DoesNotExist:
                 return Response({
                     "status": "404",
                     "message": "User not found",
-                    "Response": {}
+                    "Response": []
                 }, status=status.HTTP_404_NOT_FOUND)
-            except Exception as e:
-                return Response({
-                    "status": "500",
-                    "message": f"Error resetting password: {str(e)}",
-                    "Response": {}
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
+            return Response({
+                "status": "200",
+                "message": "OTP verified successfully. You can now reset your password.",
+                "Response": [{
+                    "email": user.email,
+                    "verified": True
+                }]
+            }, status=status.HTTP_200_OK)
+
+        # Validation errors
         return Response({
             "status": "400",
-            "message": "Validation error",
+            "message": "Validation errors",
             "Response": serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResetPasswordAPIView(APIView):
+    """
+    API to reset password after OTP verification.
+    Assumes OTP has already been verified via VerifyPasswordResetOTPAPIView.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+        new_password = request.data.get('new_password')
+        confirm_password = request.data.get('confirm_password')
+
+        # Validate required fields
+        if not email or not otp or not new_password or not confirm_password:
+            return Response({
+                "status": "400",
+                "message": "Missing required fields: email, otp, new_password, confirm_password",
+                "Response": {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check password match
+        if new_password != confirm_password:
+            return Response({
+                "status": "400",
+                "message": "Passwords do not match",
+                "Response": {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verify password length
+        if len(new_password) < 6:
+            return Response({
+                "status": "400",
+                "message": "Password must be at least 6 characters long",
+                "Response": {}
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Get OTP record and verify it's still valid
+            try:
+                otp_record = EmailOTP.objects.filter(email=email, otp=otp, is_verified=False).latest("created_at")
+            except EmailOTP.DoesNotExist:
+                return Response({
+                    "status": "400",
+                    "message": "Invalid or expired OTP",
+                    "Response": {}
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check OTP expiry
+            if otp_record.is_expired():
+                return Response({
+                    "status": "400",
+                    "message": "OTP has expired. Please request a new one.",
+                    "Response": {}
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Get user and update password
+            user = CustomUser.objects.get(email=email)
+            user.set_password(new_password)
+            user.save(update_fields=['password'])
+
+            # Mark OTP as verified
+            otp_record.is_verified = True
+            otp_record.save()
+
+            return Response({
+                "status": "200",
+                "message": "Password reset successfully",
+                "Response": {
+                    "email": user.email,
+                    "message": "Your password has been reset. Please login with your new password."
+                }
+            }, status=status.HTTP_200_OK)
+
+        except CustomUser.DoesNotExist:
+            return Response({
+                "status": "404",
+                "message": "User not found",
+                "Response": {}
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                "status": "500",
+                "message": f"Error resetting password: {str(e)}",
+                "Response": {}
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
