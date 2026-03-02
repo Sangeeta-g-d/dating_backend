@@ -208,3 +208,42 @@ class DeviceToken(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.device_type}"
+
+
+class PasswordResetToken(models.Model):
+    """
+    Model to store password reset tokens for users.
+    Token expires after 24 hours.
+    """
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="password_reset_tokens")
+    token = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+    used_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def is_expired(self):
+        """Check if token is expired (24 hours)"""
+        expiry_time = self.created_at + timedelta(hours=24)
+        return timezone.now() > expiry_time
+
+    def is_valid(self):
+        """Check if token is valid (not used and not expired)"""
+        return not self.is_used and not self.is_expired()
+
+    def mark_as_used(self):
+        """Mark the token as used"""
+        self.is_used = True
+        self.used_at = timezone.now()
+        self.save(update_fields=['is_used', 'used_at'])
+
+    @staticmethod
+    def generate_token():
+        """Generate a unique token"""
+        import secrets
+        return secrets.token_urlsafe(50)
+
+    def __str__(self):
+        return f"Reset token for {self.user.email} - {'Valid' if self.is_valid() else 'Invalid'}"

@@ -610,6 +610,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             logger.error(f"❌ [INBOX_UPDATE_BROADCAST] Error sending inbox update: {str(e)}", exc_info=True)
 
+    async def chat_delete(self, event):
+        """Handle message deletion broadcast event"""
+        logger.warning(f"🗑️ [CHAT_DELETE] Handler called with event")
+        try:
+            response = {
+                "event": "messages_deleted",
+                "data": event["data"]
+            }
+            logger.info(f"🗑️ [CHAT_DELETE] Sending to WebSocket: {response}")
+            await self.send(json.dumps(response))
+            logger.warning(f"✅ [CHAT_DELETE] Message deletion event sent successfully")
+        except Exception as e:
+            logger.error(f"❌ [CHAT_DELETE] Error sending deletion event: {str(e)}", exc_info=True)
+
 
 class InboxConsumer(AsyncWebsocketConsumer):
     """

@@ -733,3 +733,131 @@ class DeleteAccountAPIView(APIView):
             "message": "User account deleted successfully",
             "Response": None
         }, status=status.HTTP_200_OK)
+
+
+class ForgotPasswordAPIView(APIView):
+    """
+    API to request password reset.
+    Generates an OTP and sends it via email.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            
+            try:
+                user = CustomUser.objects.get(email=email)
+                
+                # Generate OTP
+                otp = EmailOTP.generate_otp()
+                EmailOTP.objects.create(email=email, otp=otp)
+                
+                # Send OTP via email
+                subject = "Password Reset OTP"
+                message = f"""
+Hello {user.full_name},
+
+We received a request to reset your password. Use the OTP below to reset your password:
+
+OTP: {otp}
+
+This OTP will expire in 5 minutes.
+
+If you did not request this, please ignore this email.
+
+Best regards,
+Lumivox App Team
+                """
+                
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email="noreply@datingapp.com",
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                
+                return Response({
+                    "status": "200",
+                    "message": "OTP sent to your email for password reset",
+                    "Response": {
+                        "email": email
+                    }
+                }, status=status.HTTP_200_OK)
+                
+            except CustomUser.DoesNotExist:
+                # Don't reveal if email exists (security best practice)
+                return Response({
+                    "status": "200",
+                    "message": "If an account exists with this email, an OTP has been sent for password reset",
+                    "Response": {}
+                }, status=status.HTTP_200_OK)
+                
+            except Exception as e:
+                return Response({
+                    "status": "500",
+                    "message": f"Error sending OTP email: {str(e)}",
+                    "Response": {}
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        return Response({
+            "status": "400",
+            "message": "Validation error",
+            "Response": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResetPasswordAPIView(APIView):
+    """
+    API to reset password using OTP sent via email.
+    Verifies OTP and updates the password.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = VerifyForgotPasswordOTPSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            new_password = serializer.validated_data['new_password']
+            otp_record = serializer.validated_data['otp_record']
+            
+            try:
+                user = CustomUser.objects.get(email=email)
+                
+                # Update password
+                user.set_password(new_password)
+                user.save(update_fields=['password'])
+                
+                # Mark OTP as verified
+                otp_record.is_verified = True
+                otp_record.save()
+                
+                return Response({
+                    "status": "200",
+                    "message": "Password reset successfully",
+                    "Response": {
+                        "email": user.email,
+                        "message": "Your password has been reset. Please login with your new password."
+                    }
+                }, status=status.HTTP_200_OK)
+                
+            except CustomUser.DoesNotExist:
+                return Response({
+                    "status": "404",
+                    "message": "User not found",
+                    "Response": {}
+                }, status=status.HTTP_404_NOT_FOUND)
+            except Exception as e:
+                return Response({
+                    "status": "500",
+                    "message": f"Error resetting password: {str(e)}",
+                    "Response": {}
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        return Response({
+            "status": "400",
+            "message": "Validation error",
+            "Response": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)

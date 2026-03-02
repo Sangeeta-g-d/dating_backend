@@ -14,7 +14,6 @@ urlpatterns = [
     path('user-post/', UserFeedAPIView.as_view(), name='user_posts'),
     path('user-post/<int:pk>/', UserFeedAPIView.as_view(), name='delete-post'),
 
-
     path('search-users/', UserSearchAPIView.as_view(), name='search_users'),
 
     path('dashboard-api/', DashboardOverviewAPIView.as_view(), name='dashboard_api'),
@@ -23,4 +22,8 @@ urlpatterns = [
     path("scan-qr-code/",QRMatchAPIView.as_view(),name="scan-qr-code"),
     path("update-location/", UpdateUserLocationAPIView.as_view(), name="update-user-location"),
     path("delete-account/", DeleteAccountAPIView.as_view(), name="delete-account"),
+    
+    # Forgot Password endpoints
+    path("forgot-password/", ForgotPasswordAPIView.as_view(), name="forgot-password"),
+    path("reset-password/", ResetPasswordAPIView.as_view(), name="reset-password"),
 ]
