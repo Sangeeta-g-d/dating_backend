@@ -953,3 +953,18 @@ class ResetPasswordAPIView(APIView):
                 "message": f"Error resetting password: {str(e)}",
                 "Response": {}
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+class AppVersionAPIView(APIView):
+
+    def get(self, request):
+        data = {
+            "status": "200",
+            "message": "App version metadata",
+            "Response": {
+                "latest_app_version": 2,
+                "minimum_app_version": 1
+            }
+        }
+        return Response(data, status=status.HTTP_200_OK)

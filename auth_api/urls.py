@@ -27,4 +27,5 @@ urlpatterns = [
     path("forgot-password/", ForgotPasswordAPIView.as_view(), name="forgot-password"),
     path("verify-password-reset-otp/", VerifyPasswordResetOTPAPIView.as_view(), name="verify-password-reset-otp"),
     path("reset-password/", ResetPasswordAPIView.as_view(), name="reset-password"),
+    path('app-version/', AppVersionAPIView.as_view(), name='app-version'),
 ]
