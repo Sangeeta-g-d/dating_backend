@@ -2,6 +2,8 @@
 
 from rest_framework import serializers
 from admin_part.models import SubscriptionPlan
+
+
 class SubscriptionPlanSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField()
     expiry_days_left = serializers.SerializerMethodField()
@@ -31,16 +33,33 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
             return subscription.remaining_days()   # uses model function
         return None
 
-class SubscriptionPurchaseSerializer(serializers.Serializer):
+class SubscriptionInitSerializer(serializers.Serializer):
+    """
+    Serializer used to initiate a subscription purchase.
+    The server will create a Razorpay order for the selected plan.
+    """
+
     plan_id = serializers.IntegerField()
-    payment_id = serializers.CharField()
-    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
 
     def validate(self, attrs):
+        plan_id = attrs.get("plan_id")
         try:
-            plan = SubscriptionPlan.objects.get(id=attrs['plan_id'])
-            attrs['plan'] = plan
+            plan = SubscriptionPlan.objects.get(id=plan_id)
         except SubscriptionPlan.DoesNotExist:
             raise serializers.ValidationError({"plan_id": "Invalid or inactive plan selected"})
 
+        if plan.plan_type == "free":
+            raise serializers.ValidationError({"plan_id": "Cannot purchase a free plan"})
+
+        attrs["plan"] = plan
         return attrs
+
+
+class PaymentConfirmSerializer(serializers.Serializer):
+    """
+    Serializer for confirming a payment after Razorpay Checkout.
+    """
+
+    razorpay_order_id = serializers.CharField()
+    razorpay_payment_id = serializers.CharField()
+    razorpay_signature = serializers.CharField()

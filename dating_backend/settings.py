@@ -122,7 +122,15 @@ SIMPLE_JWT = {
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-    )
+    ),
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.AnonRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "user": "1000/day",
+        "anon": "100/day",
+    },
 }
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -163,6 +171,14 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 FIELD_ENCRYPTION_KEY = config('FIELD_ENCRYPTION_KEY')
+
+# Razorpay configuration
+RAZORPAY_KEY_ID = config("RAZORPAY_KEY_ID", default="")
+RAZORPAY_KEY_SECRET = config("RAZORPAY_KEY_SECRET", default="")
+# Webhook secret used to verify Razorpay webhook calls
+RAZORPAY_WEBHOOK_SECRET = config("RAZORPAY_WEBHOOK_SECRET", default="")
+# Convenience flag for distinguishing environments
+RAZORPAY_TEST_MODE = DEBUG
 # Django Channels
 ASGI_APPLICATION = "dating_backend.asgi.application"
 

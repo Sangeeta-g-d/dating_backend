@@ -145,10 +145,12 @@ class InboxUserListAPIView(APIView):
             last_message_text = "Media" if last_msg.media else last_msg.content or ""
             last_message_time = format_to_ist(last_msg.created_at)
 
+            # Count only messages sent by the *other* user that are still unseen
             unseen_count = MessageReceipt.objects.filter(
                 message__room=room,
+                message__sender=other_user,
                 user=user,
-                seen_at__isnull=True
+                seen_at__isnull=True,
             ).count()
 
             profile_url = (

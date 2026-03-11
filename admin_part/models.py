@@ -67,20 +67,53 @@ class Transaction(models.Model):
     Store payment or upgrade transactions for subscriptions
     """
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('completed', 'Completed'),
-        ('failed', 'Failed')
+        ("created", "Created"),
+        ("pending", "Pending"),
+        ("completed", "Completed"),
+        ("failed", "Failed"),
+        ("refunded", "Refunded"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    PAYMENT_TYPE_CHOICES = [
+        ("subscription", "Subscription"),
+        ("one_time", "One-time"),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="transactions")
-    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.SET_NULL, null=True)
-    payment_id = models.CharField(max_length=255, blank=True, null=True)
+    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.SET_NULL, null=True, blank=True)
+
+    # High-level classification of what this transaction represents
+    payment_type = models.CharField(
+        max_length=20,
+        choices=PAYMENT_TYPE_CHOICES,
+        default="subscription",
+        help_text="Whether this is a subscription purchase or a one-time payment.",
+    )
+
+    # Monetary details
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending')
+    currency = models.CharField(max_length=10, default="INR")
+
+    # Razorpay-specific identifiers
+    razorpay_order_id = models.CharField(max_length=255, blank=True, null=True, db_index=True)
+    razorpay_payment_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
+    razorpay_signature = models.CharField(max_length=255, blank=True, null=True)
+
+    # Gateway-side status and metadata
+    gateway_status = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="Raw status value from the payment gateway (e.g. captured, failed).",
+    )
+
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default="created")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.email} - {self.plan.name} - {self.status}"
+        plan_name = self.plan.name if self.plan else "No plan"
+        return f"{self.user.email} - {plan_name} - {self.status}"
 
 
 class ChatBackground(models.Model):
