@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db import transaction
 
 from admin_part.models import SubscriptionPlan, Transaction, UserSubscription
 from dating_backend.timezone_utils import format_to_ist
@@ -163,10 +164,11 @@ class PaymentConfirmAPIView(APIView):
         razorpay_signature = serializer.validated_data["razorpay_signature"]
 
         try:
-            transaction = Transaction.objects.select_for_update().get(
-                user=user, razorpay_order_id=razorpay_order_id
-            )
-        except Transaction.DoesNotExist:
+            with transaction.atomic():
+                transaction_obj  = Transaction.objects.select_for_update().get(
+                    user=user, razorpay_order_id=razorpay_order_id
+                )
+        except transaction_obj.DoesNotExist:
             return Response(
                 {
                     "status": "404",
@@ -176,23 +178,23 @@ class PaymentConfirmAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if transaction.status == "completed":
+        if transaction_obj.status == "completed":
             return Response(
                 {
                     "status": "200",
                     "message": "Payment already confirmed",
                     "Response": {
-                        "transaction_id": transaction.id,
-                        "plan": transaction.plan.name if transaction.plan else None,
+                        "transaction_id": transaction_obj.id,
+                        "plan": transaction_obj.plan.name if transaction_obj.plan else None,
                     },
                 },
                 status=status.HTTP_200_OK,
             )
 
         if not verify_payment_signature(razorpay_order_id, razorpay_payment_id, razorpay_signature):
-            transaction.status = "failed"
-            transaction.gateway_status = "signature_verification_failed"
-            transaction.save(update_fields=["status", "gateway_status"])
+            transaction_obj.status = "failed"
+            transaction_obj.gateway_status = "signature_verification_failed"
+            transaction_obj.save(update_fields=["status", "gateway_status"])
             return Response(
                 {
                     "status": "400",
@@ -219,18 +221,18 @@ class PaymentConfirmAPIView(APIView):
         amount_received = payment.get("amount")
         currency = payment.get("currency")
 
-        expected_amount_paise = int(transaction.amount * 100)
+        expected_amount_paise = int(transaction_obj.amount * 100)
 
         if (
             payment_status != "captured"
             or amount_received != expected_amount_paise
-            or currency != transaction.currency
+            or currency != transaction_obj.currency
         ):
-            transaction.status = "failed"
-            transaction.gateway_status = payment_status
-            transaction.razorpay_payment_id = razorpay_payment_id
-            transaction.razorpay_signature = razorpay_signature
-            transaction.save(
+            transaction_obj.status = "failed"
+            transaction_obj.gateway_status = payment_status
+            transaction_obj.razorpay_payment_id = razorpay_payment_id
+            transaction_obj.razorpay_signature = razorpay_signature
+            transaction_obj.save(
                 update_fields=[
                     "status",
                     "gateway_status",
@@ -241,7 +243,7 @@ class PaymentConfirmAPIView(APIView):
             logger.warning(
                 "Payment verification failed or mismatched amount",
                 extra={
-                    "transaction_id": transaction.id,
+                    "transaction_id": transaction_obj.id,
                     "payment_status": payment_status,
                     "amount_received": amount_received,
                     "expected_amount": expected_amount_paise,
@@ -256,11 +258,11 @@ class PaymentConfirmAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        transaction.status = "completed"
-        transaction.gateway_status = payment_status
-        transaction.razorpay_payment_id = razorpay_payment_id
-        transaction.razorpay_signature = razorpay_signature
-        transaction.save(
+        transaction_obj.status = "completed"
+        transaction_obj.gateway_status = payment_status
+        transaction_obj.razorpay_payment_id = razorpay_payment_id
+        transaction_obj.razorpay_signature = razorpay_signature
+        transaction_obj.save(
             update_fields=[
                 "status",
                 "gateway_status",
@@ -269,7 +271,7 @@ class PaymentConfirmAPIView(APIView):
             ]
         )
 
-        plan = transaction.plan
+        plan = transaction_obj.plan
         subscription, _ = UserSubscription.objects.get_or_create(user=user)
         subscription.plan = plan
         subscription.start_date = timezone.now()
