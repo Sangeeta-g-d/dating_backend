@@ -288,7 +288,7 @@ class PaymentConfirmAPIView(APIView):
                     "price": str(plan.price) if plan else None,
                     "duration_days": plan.duration_days if plan else None,
                     "valid_till": format_to_ist(subscription.end_date),
-                    "transaction_id": transaction.id,
+                    "transaction_id": transaction_obj.id,
                     "payment_id": razorpay_payment_id,
                 },
             },
