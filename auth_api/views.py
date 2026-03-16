@@ -525,6 +525,9 @@ class UserFeedAPIView(APIView):
     
 
 # search
+from datetime import date, timedelta
+from rest_framework.exceptions import NotFound
+
 class UserSearchAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -537,7 +540,9 @@ class UserSearchAPIView(APIView):
         min_age = request.GET.get("min_age")
         max_age = request.GET.get("max_age")
 
-        queryset = CustomUser.objects.select_related("profile").exclude(is_superuser=True).exclude(id=request.user.id)
+        queryset = CustomUser.objects.select_related("profile")\
+            .exclude(is_superuser=True)\
+            .exclude(id=request.user.id)
 
         # --- Search by full_name ---
         if search:
@@ -556,7 +561,6 @@ class UserSearchAPIView(APIView):
             queryset = queryset.filter(profile__gender__iexact=gender)
 
         # -------- AGE RANGE FILTERING --------
-        from datetime import date, timedelta
         today = date.today()
 
         if max_age:
@@ -569,17 +573,68 @@ class UserSearchAPIView(APIView):
             min_birthdate = date(today.year - min_age - 1, today.month, today.day) + timedelta(days=1)
             queryset = queryset.filter(profile__date_of_birth__gte=min_birthdate)
 
-        # -------------------------------------
+        # -------- PAGINATION --------
+        paginator = StandardResultsPagination()
+
+        try:
+            paginated_users = paginator.paginate_queryset(queryset, request)
+        except NotFound:
+            page_num = request.query_params.get('page', 1)
+            try:
+                page_num = int(page_num)
+            except (ValueError, TypeError):
+                page_num = 1
+
+            total_items = queryset.count()
+            page_size = paginator.page_size
+            total_pages = (total_items + page_size - 1) // page_size
+
+            return Response({
+                "status": "200",
+                "message": "Users fetched successfully",
+                "Response": [],
+                "pagination": {
+                    "current_page": page_num,
+                    "page_size": page_size,
+                    "total_items": total_items,
+                    "total_pages": total_pages,
+                    "has_next_page": False,
+                    "has_previous_page": page_num > 1
+                }
+            })
 
         serializer = UserSearchSerializer(
-            queryset, many=True, context={"request": request}
+            paginated_users,
+            many=True,
+            context={"request": request}
         )
 
-        return Response({
+        # Pagination info
+        page_num = request.query_params.get('page', 1)
+        try:
+            page_num = int(page_num)
+        except (ValueError, TypeError):
+            page_num = 1
+
+        total_items = queryset.count()
+        page_size = paginator.page_size
+        total_pages = (total_items + page_size - 1) // page_size
+
+        response_data = {
             "status": "200",
             "message": "Users fetched successfully",
             "Response": serializer.data,
-        })
+            "pagination": {
+                "current_page": page_num,
+                "page_size": page_size,
+                "total_items": total_items,
+                "total_pages": total_pages,
+                "has_next_page": page_num < total_pages,
+                "has_previous_page": page_num > 1
+            }
+        }
+
+        return Response(response_data)
 
 
 class DashboardOverviewAPIView(APIView):
