@@ -9,7 +9,7 @@ from .serializers import *
 from django.utils import timezone
 from random import sample
 from django.db.models import Q
-from .pagination import StandardResultsPagination
+from chat.pagination import StandardResultsPagination
 User = get_user_model()
 from notifications.utils import create_notification
 # Create your views here.
