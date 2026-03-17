@@ -360,7 +360,6 @@ class SwipeActionAPIView(APIView):
                 ]
             }, status=status.HTTP_200_OK)
         
-
 class MatchedUsersListAPIView(APIView):
     """
     Returns all users who have mutually accepted matches with the logged-in user.
@@ -374,19 +373,46 @@ class MatchedUsersListAPIView(APIView):
 
             # If no matches found
             if not matched_users:
-                response_data = {
+                return Response({
                     "status": "404",
                     "message": "No matches found.",
                     "Response": []
-                }
-                return Response(response_data, status=status.HTTP_404_NOT_FOUND)
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            paginator = StandardResultsPagination()
+
+            try:
+                paginated_users = paginator.paginate_queryset(matched_users, request)
+            except NotFound:
+                page_num = request.query_params.get('page', 1)
+                try:
+                    page_num = int(page_num)
+                except (ValueError, TypeError):
+                    page_num = 1
+
+                total_items = len(matched_users)
+                page_size = paginator.page_size
+                total_pages = (total_items + page_size - 1) // page_size
+
+                return Response({
+                    "status": "200",
+                    "message": "Matched users fetched successfully.",
+                    "Response": [],
+                    "pagination": {
+                        "current_page": page_num,
+                        "page_size": page_size,
+                        "total_items": total_items,
+                        "total_pages": total_pages,
+                        "has_next_page": False,
+                        "has_previous_page": page_num > 1
+                    }
+                }, status=status.HTTP_200_OK)
 
             response_list = []
 
-            for matched_user in matched_users:
+            for matched_user in paginated_users:
                 profile = getattr(matched_user, "profile", None)
 
-                # Profile photo URL
                 profile_photo_url = (
                     request.build_absolute_uri(matched_user.profile_photo.url)
                     if matched_user.profile_photo else None
@@ -399,23 +425,43 @@ class MatchedUsersListAPIView(APIView):
                     "is_online": profile.is_online if profile else False,
                 })
 
+            # Pagination calculations
+            page_num = request.query_params.get('page', 1)
+            try:
+                page_num = int(page_num)
+            except (ValueError, TypeError):
+                page_num = 1
+
+            total_items = len(matched_users)
+            page_size = paginator.page_size
+            total_pages = (total_items + page_size - 1) // page_size
+            has_next_page = page_num < total_pages
+            has_previous_page = page_num > 1
+
             response_data = {
                 "status": "200",
                 "message": "Matched users fetched successfully.",
-                "Response": response_list if response_list else []
+                "Response": response_list,
+                "pagination": {
+                    "current_page": page_num,
+                    "page_size": page_size,
+                    "total_items": total_items,
+                    "total_pages": total_pages,
+                    "has_next_page": has_next_page,
+                    "has_previous_page": has_previous_page
+                }
             }
 
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            response_data = {
+            return Response({
                 "status": "500",
                 "message": f"An unexpected error occurred: {str(e)}",
                 "Response": []
-            }
-            return Response(response_data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
+            
 class UnmatchAPIView(APIView):
     """
     Unmatch a user with whom the logged-in user has a mutual match.
