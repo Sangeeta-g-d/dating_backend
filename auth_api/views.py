@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
-from .pagination import StandardResultsPagination
+from chat.pagination import StandardResultsPagination
 from chat.models import MessageReceipt
 from notifications.models import Notification
 from .serializers import *
