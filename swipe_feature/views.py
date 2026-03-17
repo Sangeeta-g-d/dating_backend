@@ -9,6 +9,7 @@ from .serializers import *
 from django.utils import timezone
 from random import sample
 from django.db.models import Q
+from .pagination import StandardResultsPagination
 User = get_user_model()
 from notifications.utils import create_notification
 # Create your views here.
@@ -461,7 +462,7 @@ class MatchedUsersListAPIView(APIView):
                 "Response": []
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            
+
 class UnmatchAPIView(APIView):
     """
     Unmatch a user with whom the logged-in user has a mutual match.
