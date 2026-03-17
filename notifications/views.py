@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from chat.pagination import StandardResultsPagination
+from chat.pagination import StandardSearchPagination
 
 
 # Create your views here.
@@ -19,7 +19,7 @@ class NotificationListAPIView(APIView):
 
             notifications = Notification.objects.filter(user=user).order_by("-created_at")
 
-            paginator = StandardResultsPagination()
+            paginator = StandardSearchPagination()
 
             try:
                 paginated_notifications = paginator.paginate_queryset(notifications, request)
