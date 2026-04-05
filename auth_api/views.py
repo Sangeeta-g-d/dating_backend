@@ -647,7 +647,7 @@ class DashboardOverviewAPIView(APIView):
         unread_messages = MessageReceipt.objects.filter(
             user=user,
             seen_at__isnull=True
-        ).count()
+        ).exclude(message__sender=user).count()
 
         # -------------------- 🔹 Unread notifications count ---------------
         unread_notifications = Notification.objects.filter(
