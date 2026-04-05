@@ -19,6 +19,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from admin_part.models import ChatBackground
 from rest_framework.pagination import PageNumberPagination
+from swipe_feature.models import Match
 
 class ChatRoomHistoryAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -42,6 +43,21 @@ class ChatRoomHistoryAPIView(APIView):
                     "message": "Cannot create chat room with yourself",
                     "Response": []
                 }, status=status.HTTP_400_BAD_REQUEST)
+
+            # -----------------------------------------------------------
+            # ✅ VERIFY MUTUAL MATCH BEFORE ALLOWING CHAT (Option 2)
+            # -----------------------------------------------------------
+            match_exists = Match.objects.filter(
+                Q(user1=current_user, user2=other_user) |
+                Q(user1=other_user, user2=current_user)
+            ).exists()
+
+            if not match_exists:
+                return Response({
+                    "success": "403",
+                    "message": "You can only chat with users you have matched with.",
+                    "Response": []
+                }, status=status.HTTP_403_FORBIDDEN)
 
             room, created = self.get_room(current_user, other_user)
 
