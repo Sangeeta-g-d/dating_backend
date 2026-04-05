@@ -83,6 +83,7 @@ class ChatRoomHistoryAPIView(APIView):
                 return Response({
                     "success": "200",
                     "message": "Chat history fetched successfully",
+                    "room_id": room.id,
                     "Response": [],
                     "pagination": {
                         "current_page": page_num,
@@ -117,6 +118,7 @@ class ChatRoomHistoryAPIView(APIView):
             response_data = {
                 "success": "200",
                 "message": "Chat history fetched successfully" if not created else "New chat room created",
+                "room_id": room.id,
                 "Response": msg_serializer.data,
                 "pagination": {
                     "current_page": page_num,
