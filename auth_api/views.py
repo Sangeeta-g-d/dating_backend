@@ -1019,7 +1019,7 @@ class AppVersionAPIView(APIView):
             "message": "App version metadata",
             "Response": {
                 "latest_app_version": 2,
-                "minimum_app_version": 1
+                "minimum_app_version": 2
             }
         }
         return Response(data, status=status.HTTP_200_OK)
