@@ -7,6 +7,52 @@
     <div>
       <h3 class="fw-bold mb-3">User List</h3>
     </div>
+    <div class="ms-auto d-flex align-items-center gap-3">
+      <form method="get" class="d-flex align-items-center gap-2">
+        <label for="per_page" class="mb-0">Items per page:</label>
+        <select id="per_page" name="per_page" class="form-control form-control-sm" onchange="this.form.submit()">
+          <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+          <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+          <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+          <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+        </select>
+      </form>
+    </div>
+  </div>
+
+  <div class="row mb-3">
+    <div class="col-md-3 mb-2">
+      <div class="card bg-light border">
+        <div class="card-body text-center">
+          <h6>Total Users</h6>
+          <h3 class="mb-0">{{ total_users }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-2">
+      <div class="card bg-light border">
+        <div class="card-body text-center">
+          <h6>Active Users</h6>
+          <h3 class="mb-0">{{ active_users }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-2">
+      <div class="card bg-light border">
+        <div class="card-body text-center">
+          <h6>Blocked Users</h6>
+          <h3 class="mb-0">{{ blocked_users }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-2">
+      <div class="card bg-light border">
+        <div class="card-body text-center">
+          <h6>Total Matches</h6>
+          <h3 class="mb-0">{{ total_matches }}</h3>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Users Table -->
@@ -35,7 +81,7 @@
                 {% if user.profile_photo %}
                   <img src="{{ user.profile_photo.url }}" alt="Profile" class="rounded-circle" width="40" height="40">
                 {% else %}
-                  <img src="{% static 'images/default-avatar.png' %}" alt="Default" class="rounded-circle" width="40" height="40">
+                  <img src="{% static 'images/default.jpg' %}" alt="Default" class="rounded-circle" width="40" height="40">
                 {% endif %}
               </td>
               <td><a href="{% url 'user_detail' user.id %}">{{ user.full_name }}</a></td>
@@ -60,7 +106,7 @@
       <nav aria-label="Page navigation">
         <ul class="pagination justify-content-center mt-3">
           {% if users.has_previous %}
-            <li class="page-item"><a class="page-link" href="?page={{ users.previous_page_number }}">Previous</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ users.previous_page_number }}&per_page={{ per_page }}">Previous</a></li>
           {% else %}
             <li class="page-item disabled"><span class="page-link">Previous</span></li>
           {% endif %}
@@ -71,14 +117,14 @@
                 {% if num == users.number %}
                   <span class="page-link">{{ num }}</span>
                 {% else %}
-                  <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                  <a class="page-link" href="?page={{ num }}&per_page={{ per_page }}">{{ num }}</a>
                 {% endif %}
               </li>
             {% endif %}
           {% endfor %}
 
           {% if users.has_next %}
-            <li class="page-item"><a class="page-link" href="?page={{ users.next_page_number }}">Next</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ users.next_page_number }}&per_page={{ per_page }}">Next</a></li>
           {% else %}
             <li class="page-item disabled"><span class="page-link">Next</span></li>
           {% endif %}

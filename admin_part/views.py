@@ -145,7 +145,17 @@ def delete_subscription_plan(request, pk):
 
 def user_list(request):
     user_list = CustomUser.objects.exclude(is_superuser=True).order_by('-date_joined')
-    paginator = Paginator(user_list, 10)
+
+    per_page = request.GET.get('per_page', '10')
+    try:
+        per_page = int(per_page)
+    except (ValueError, TypeError):
+        per_page = 10
+
+    if per_page not in [10, 20, 50, 100]:
+        per_page = 10
+
+    paginator = Paginator(user_list, per_page)
     page_number = request.GET.get('page', 1)
 
     try:
@@ -155,7 +165,22 @@ def user_list(request):
     except EmptyPage:
         users = paginator.page(paginator.num_pages)
 
-    return render(request, 'user_list.html', {'users': users})
+    total_users = user_list.count()
+    blocked_users = user_list.filter(is_blocked=True).count()
+    active_users = total_users - blocked_users
+    total_matches = Match.objects.count()
+    with_profile = user_list.filter(profile__isnull=False).count()
+
+    context = {
+        'users': users,
+        'per_page': per_page,
+        'total_users': total_users,
+        'active_users': active_users,
+        'blocked_users': blocked_users,
+        'total_matches': total_matches,
+        'with_profile': with_profile,
+    }
+    return render(request, 'user_list.html', context)
 
 
 def user_detail(request, user_id):

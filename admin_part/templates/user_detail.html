@@ -42,9 +42,11 @@
 
           <form method="post">
             {% csrf_token %}
-            <button type="submit" name="action" value="toggle_block" class="btn btn-{{ 'success' if user_obj.is_blocked else 'danger' }}">
-              {{ 'Unblock User' if user_obj.is_blocked else 'Block User' }}
-            </button>
+            {% if user_obj.is_blocked %}
+              <button type="submit" name="action" value="toggle_block" class="btn btn-success">Unblock User</button>
+            {% else %}
+              <button type="submit" name="action" value="toggle_block" class="btn btn-danger">Block User</button>
+            {% endif %}
           </form>
         </div>
       </div>
