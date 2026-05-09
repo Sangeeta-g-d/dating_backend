@@ -144,7 +144,22 @@ def delete_subscription_plan(request, pk):
     return JsonResponse({"status": "error", "message": "Invalid request method."})
 
 def user_list(request):
-    user_list = CustomUser.objects.exclude(is_superuser=True).order_by('-date_joined')
+    all_users = CustomUser.objects.exclude(is_superuser=True)
+    total_users = all_users.count()
+    blocked_users = all_users.filter(is_blocked=True).count()
+    active_users = total_users - blocked_users
+    with_profile = all_users.filter(profile__isnull=False).count()
+    total_matches = Match.objects.count()
+
+    search_query = request.GET.get('q', '').strip()
+    user_list = all_users.order_by('-date_joined')
+    if search_query:
+        user_list = user_list.filter(
+            Q(full_name__icontains=search_query)
+            | Q(email__icontains=search_query)
+            | Q(phone_number__icontains=search_query)
+            | Q(city__icontains=search_query)
+        )
 
     per_page = request.GET.get('per_page', '10')
     try:
@@ -165,12 +180,6 @@ def user_list(request):
     except EmptyPage:
         users = paginator.page(paginator.num_pages)
 
-    total_users = user_list.count()
-    blocked_users = user_list.filter(is_blocked=True).count()
-    active_users = total_users - blocked_users
-    total_matches = Match.objects.count()
-    with_profile = user_list.filter(profile__isnull=False).count()
-
     context = {
         'users': users,
         'per_page': per_page,
@@ -179,6 +188,7 @@ def user_list(request):
         'blocked_users': blocked_users,
         'total_matches': total_matches,
         'with_profile': with_profile,
+        'query': search_query,
     }
     return render(request, 'user_list.html', context)
 
@@ -186,6 +196,13 @@ def user_list(request):
 def user_detail(request, user_id):
     user_obj = get_object_or_404(CustomUser, id=user_id, is_superuser=False)
     profile = getattr(user_obj, 'profile', None)
+    subscription = getattr(user_obj, 'subscription', None)
+    subscription_remaining_days = None
+    if subscription and subscription.end_date:
+        try:
+            subscription_remaining_days = subscription.remaining_days()
+        except Exception:
+            subscription_remaining_days = None
 
     matches = Match.objects.filter(Q(user1=user_obj) | Q(user2=user_obj)).select_related('user1', 'user2').order_by('-matched_at')
     matched_pairs = [
@@ -208,6 +225,8 @@ def user_detail(request, user_id):
         'user_obj': user_obj,
         'profile': profile,
         'matched_pairs': matched_pairs,
+        'subscription': subscription,
+        'subscription_remaining_days': subscription_remaining_days,
     })
 
 

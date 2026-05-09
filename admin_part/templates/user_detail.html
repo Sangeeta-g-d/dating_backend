@@ -26,7 +26,9 @@
         </div>
         <div class="card-body text-center">
           {% if user_obj.profile_photo %}
-            <img src="{{ user_obj.profile_photo.url }}" class="rounded-circle mb-3" width="120" height="120" alt="Profile Photo">
+            <a href="#profileImageModal" data-bs-toggle="modal">
+              <img src="{{ user_obj.profile_photo.url }}" class="rounded-circle mb-3" width="120" height="120" alt="Profile Photo">
+            </a>
           {% else %}
             <img src="{% static 'images/default-avatar.png' %}" class="rounded-circle mb-3" width="120" height="120" alt="Profile Photo">
           {% endif %}
@@ -48,6 +50,34 @@
               <button type="submit" name="action" value="toggle_block" class="btn btn-danger">Block User</button>
             {% endif %}
           </form>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header">
+          <h5>Subscription Details</h5>
+        </div>
+        <div class="card-body">
+          {% if subscription %}
+            <p><strong>Plan:</strong> {{ subscription.plan.name|default:'—' }}</p>
+            <p><strong>Type:</strong> {{ subscription.plan.plan_type|title|default:'—' }}</p>
+            <p><strong>Price:</strong> {{ subscription.plan.price|default:'—' }}</p>
+            <p><strong>Duration:</strong> {{ subscription.plan.duration_days }} days</p>
+            <p><strong>Start Date:</strong> {{ subscription.start_date|date:'d M Y' }}</p>
+            <p><strong>End Date:</strong> {{ subscription.end_date|date:'d M Y' }}</p>
+            <p><strong>Remaining:</strong> {{ subscription_remaining_days }} days</p>
+            <p><strong>Status:</strong> {% if subscription.is_active %}Active{% else %}Inactive{% endif %}</p>
+            {% if subscription.plan.features %}
+              <p><strong>Features:</strong></p>
+              <ul>
+                {% for feature in subscription.plan.features %}
+                  <li>{{ feature }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          {% else %}
+            <p class="text-muted">No active subscription.</p>
+          {% endif %}
         </div>
       </div>
 
@@ -139,5 +169,21 @@
       </div>
     </div>
   </div>
+
+  {% if user_obj.profile_photo %}
+    <div class="modal fade" id="profileImageModal" tabindex="-1" aria-labelledby="profileImageModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="profileImageModalLabel">{{ user_obj.full_name }} - Profile Image</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center p-4">
+            <img src="{{ user_obj.profile_photo.url }}" class="img-fluid rounded" alt="Profile Photo">
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
 </div>
 {% endblock %}
