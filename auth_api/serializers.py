@@ -51,6 +51,8 @@ class UserLoginSerializer(serializers.Serializer):
             user = authenticate(request=self.context.get("request"), email=email, password=password)
             if not user:
                 raise serializers.ValidationError("Invalid email or password")
+            if not user.is_active or getattr(user, "is_blocked", False):
+                raise serializers.ValidationError("Your account has been blocked or is inactive.")
         else:
             raise serializers.ValidationError("Both email and password are required")
 

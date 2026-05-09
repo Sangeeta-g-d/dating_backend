@@ -5,7 +5,7 @@ from .views import delete_account_view
 
 urlpatterns = [
     path('admin_dashboard/',views.admin_dashboard,name="admin_dashboard"),
-    path('admin_login/',views.admin_login,name="admin_login"),
+    path('',views.admin_login,name="admin_login"),
     path('logout/',views.logout_view,name="logout"),
     path('interests/',views.interests,name="interests"),
     path('add_subscription_plan/',views.add_subscription_plan,name="add_subscription_plan"),
@@ -14,6 +14,7 @@ urlpatterns = [
     path("delete_subscription_plan/<int:plan_id>/", views.delete_subscription_plan, name="delete_subscription_plan"),
 
     path('user_list/',views.user_list,name="user_list"),
+    path('user/<int:user_id>/', views.user_detail, name='user_detail'),
     path('matches/',views.matches,name="matches"),
     path('chat_background/',views.chat_background,name="chat_background"),
 

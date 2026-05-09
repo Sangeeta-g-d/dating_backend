@@ -53,6 +53,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     country = models.CharField(max_length=100, blank=True, null=True)
 
     is_active = models.BooleanField(default=True)
+    is_blocked = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
 

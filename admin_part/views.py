@@ -1,12 +1,13 @@
-from django.shortcuts import render, redirect,get_object_or_404
-from django.contrib.auth import authenticate, login,logout
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from .models import *
 from django.views.decorators.csrf import csrf_exempt
-from auth_api.models import CustomUser
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
-from django.contrib.auth import authenticate, logout
 from django.views.decorators.http import require_http_methods
+from django.db.models import Q
+from auth_api.models import CustomUser
 from swipe_feature.models import Match
 # Create your views here.
 
@@ -143,8 +144,47 @@ def delete_subscription_plan(request, pk):
     return JsonResponse({"status": "error", "message": "Invalid request method."})
 
 def user_list(request):
-    users = CustomUser.objects.all().order_by('-date_joined').exclude(is_superuser=True)
+    user_list = CustomUser.objects.exclude(is_superuser=True).order_by('-date_joined')
+    paginator = Paginator(user_list, 10)
+    page_number = request.GET.get('page', 1)
+
+    try:
+        users = paginator.page(page_number)
+    except PageNotAnInteger:
+        users = paginator.page(1)
+    except EmptyPage:
+        users = paginator.page(paginator.num_pages)
+
     return render(request, 'user_list.html', {'users': users})
+
+
+def user_detail(request, user_id):
+    user_obj = get_object_or_404(CustomUser, id=user_id, is_superuser=False)
+    profile = getattr(user_obj, 'profile', None)
+
+    matches = Match.objects.filter(Q(user1=user_obj) | Q(user2=user_obj)).select_related('user1', 'user2').order_by('-matched_at')
+    matched_pairs = [
+        {
+            'user': match.user1 if match.user2 == user_obj else match.user2,
+            'matched_at': match.matched_at,
+        }
+        for match in matches
+    ]
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'toggle_block':
+            user_obj.is_blocked = not user_obj.is_blocked
+            user_obj.save(update_fields=['is_blocked'])
+            messages.success(request, 'User blocked successfully.' if user_obj.is_blocked else 'User unblocked successfully.')
+            return redirect('user_detail', user_id=user_id)
+
+    return render(request, 'user_detail.html', {
+        'user_obj': user_obj,
+        'profile': profile,
+        'matched_pairs': matched_pairs,
+    })
+
 
 def logout_view(request):
     logout(request)

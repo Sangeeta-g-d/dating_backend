@@ -365,6 +365,19 @@ class RefreshAccessTokenAPIView(APIView):
 
         try:
             refresh = RefreshToken(refresh_token)
+            refresh_user_id = refresh.get("user_id")
+            if refresh_user_id:
+                refresh_user = CustomUser.objects.filter(id=refresh_user_id).first()
+                if refresh_user is None or not refresh_user.is_active or getattr(refresh_user, "is_blocked", False):
+                    return Response(
+                        {
+                            "status": "403",
+                            "message": "Account blocked or inactive",
+                            "Response": []
+                        },
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+
             access_token = str(refresh.access_token)
 
             response_data = {

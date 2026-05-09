@@ -1,0 +1,141 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-inner">
+  <div class="d-flex align-items-left align-items-md-center flex-column flex-md-row pt-2 pb-4">
+    <div>
+      <h3 class="fw-bold mb-3">User Details</h3>
+      <p class="text-muted">Details and match list for {{ user_obj.full_name }}</p>
+    </div>
+    <div class="ms-auto">
+      <a href="{% url 'user_list' %}" class="btn btn-secondary">Back to User List</a>
+    </div>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="row">
+    <div class="col-md-4">
+      <div class="card mb-3">
+        <div class="card-header">
+          <h5>User Summary</h5>
+        </div>
+        <div class="card-body text-center">
+          {% if user_obj.profile_photo %}
+            <img src="{{ user_obj.profile_photo.url }}" class="rounded-circle mb-3" width="120" height="120" alt="Profile Photo">
+          {% else %}
+            <img src="{% static 'images/default-avatar.png' %}" class="rounded-circle mb-3" width="120" height="120" alt="Profile Photo">
+          {% endif %}
+          <h5 class="mt-2">{{ user_obj.full_name }}</h5>
+          <p class="text-muted">{{ user_obj.email }}</p>
+          <p>
+            {% if user_obj.is_blocked %}
+              <span class="badge bg-danger">Blocked</span>
+            {% else %}
+              <span class="badge bg-success">Active</span>
+            {% endif %}
+          </p>
+
+          <form method="post">
+            {% csrf_token %}
+            <button type="submit" name="action" value="toggle_block" class="btn btn-{{ 'success' if user_obj.is_blocked else 'danger' }}">
+              {{ 'Unblock User' if user_obj.is_blocked else 'Block User' }}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h5>Account Info</h5>
+        </div>
+        <div class="card-body">
+          <p><strong>Phone:</strong> {{ user_obj.phone_number|default:'—' }}</p>
+          <p><strong>City:</strong> {{ user_obj.city|default:'—' }}</p>
+          <p><strong>Country:</strong> {{ user_obj.country|default:'—' }}</p>
+          <p><strong>Joined On:</strong> {{ user_obj.date_joined|date:'d M Y' }}</p>
+          <p><strong>Swipes Today:</strong> {{ user_obj.swipes_today }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-8">
+      <div class="card mb-3">
+        <div class="card-header">
+          <h5>Profile Details</h5>
+        </div>
+        <div class="card-body">
+          {% if profile %}
+            <div class="row mb-2">
+              <div class="col-6"><strong>Gender</strong></div>
+              <div class="col-6">{{ profile.gender|default:'—' }}</div>
+            </div>
+            <div class="row mb-2">
+              <div class="col-6"><strong>Age</strong></div>
+              <div class="col-6">{{ profile.age|default:'—' }}</div>
+            </div>
+            <div class="row mb-2">
+              <div class="col-6"><strong>Looking for</strong></div>
+              <div class="col-6">{{ profile.looking_for|default:'—' }}</div>
+            </div>
+            <div class="row mb-2">
+              <div class="col-6"><strong>Interests</strong></div>
+              <div class="col-6">
+                {% if profile.interests.all|length %}
+                  {{ profile.interests.all|join:', ' }}
+                {% else %}
+                  —
+                {% endif %}
+              </div>
+            </div>
+            <div class="row mb-2">
+              <div class="col-6"><strong>Bio</strong></div>
+              <div class="col-6">{{ profile.bio|default:'—' }}</div>
+            </div>
+          {% else %}
+            <p class="text-muted">No profile data available for this user.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h5>Match List</h5>
+        </div>
+        <div class="card-body">
+          {% if matched_pairs %}
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Matched At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for pair in matched_pairs %}
+                    <tr>
+                      <td>{{ pair.user.id }}</td>
+                      <td><a href="{% url 'user_detail' pair.user.id %}">{{ pair.user.full_name }}</a></td>
+                      <td>{{ pair.user.email }}</td>
+                      <td>{{ pair.matched_at|date:'d M Y H:i' }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <p class="text-muted">This user has no matches yet.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
