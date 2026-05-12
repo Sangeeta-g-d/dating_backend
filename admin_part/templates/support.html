@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms & Conditions - Lumivox</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #e6399b;
+            --primary-dark: #c2185b;
+            --secondary: #ff6b9d;
+            --dark: #2c2c54;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+            --border-radius: 12px;
+            --box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #fff8fc;
+            background-image: linear-gradient(135deg, #fff5fa 0%, #fef0f7 100%);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Header Styles */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 40px 0;
+            margin-bottom: 40px;
+            border-radius: 0 0 30px 30px;
+            box-shadow: 0 4px 20px rgba(230, 57, 155, 0.2);
+        }
+        
+        .header-content {
+            text-align: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .logo-icon {
+            font-size: 36px;
+            background: rgba(255, 255, 255, 0.2);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .logo h1 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 36px;
+            letter-spacing: -0.5px;
+        }
+        
+        .last-updated {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 10px 20px;
+            border-radius: 50px;
+            display: inline-block;
+            margin-top: 15px;
+            font-size: 14px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .agreement-notice {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 25px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            backdrop-filter: blur(5px);
+            border-left: 4px solid white;
+        }
+        
+        /* Main Content */
+        .terms-content {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 40px;
+            margin-bottom: 60px;
+        }
+        
+        /* Table of Contents */
+        .table-of-contents {
+            position: sticky;
+            top: 30px;
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            box-shadow: var(--box-shadow);
+            height: fit-content;
+        }
+        
+        .toc-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 20px;
+            color: var(--dark);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--light-gray);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .toc-list {
+            list-style: none;
+        }
+        
+        .toc-item {
+            margin-bottom: 12px;
+        }
+        
+        .toc-link {
+            text-decoration: none;
+            color: var(--gray);
+            font-size: 15px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            display: block;
+            transition: var(--transition);
+            border-left: 3px solid transparent;
+        }
+        
+        .toc-link:hover, .toc-link.active {
+            color: var(--primary);
+            background-color: rgba(230, 57, 155, 0.05);
+            border-left-color: var(--primary);
+        }
+        
+        /* Terms Sections */
+        .terms-sections {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 40px;
+            box-shadow: var(--box-shadow);
+        }
+        
+        .terms-section {
+            margin-bottom: 40px;
+            scroll-margin-top: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid var(--light-gray);
+        }
+        
+        .terms-section:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        
+        .section-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 24px;
+            color: var(--dark);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .section-title i {
+            color: var(--primary);
+            background: rgba(230, 57, 155, 0.1);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .subsection {
+            margin-bottom: 25px;
+        }
+        
+        .subsection-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
+            font-size: 18px;
+            color: var(--dark);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .content-text {
+            color: #555;
+            margin-bottom: 15px;
+            font-size: 16px;
+            line-height: 1.7;
+        }
+        
+        .content-text:last-child {
+            margin-bottom: 0;
+        }
+        
+        ul.content-list {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        ul.content-list li {
+            margin-bottom: 8px;
+            color: #555;
+            position: relative;
+            padding-left: 10px;
+        }
+        
+        ul.content-list li:before {
+            content: "•";
+            color: var(--primary);
+            font-weight: bold;
+            position: absolute;
+            left: -10px;
+        }
+        
+        .warning-box {
+            background: #fff5f5;
+            border-left: 4px solid #ff4757;
+            padding: 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+        
+        .warning-box p {
+            color: #555;
+            margin: 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        
+        .highlight-box {
+            background: #fff8fc;
+            border: 1px solid #ffe6f2;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .legal-note {
+            background: #f8f9ff;
+            border-left: 4px solid #4d7cfe;
+            padding: 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+        
+        .prohibited-list {
+            background: #fff5f5;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        
+        .prohibited-list ul {
+            columns: 2;
+            column-gap: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .prohibited-list ul {
+                columns: 1;
+            }
+        }
+        
+        /* Contact Section */
+        .contact-section {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 40px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            margin-top: 40px;
+            box-shadow: 0 10px 30px rgba(230, 57, 155, 0.2);
+        }
+        
+        .contact-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        
+        .contact-info {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .contact-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            min-width: 200px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .contact-icon {
+            font-size: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .contact-text {
+            font-size: 16px;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 30px 0;
+            color: var(--gray);
+            font-size: 14px;
+            border-top: 1px solid var(--light-gray);
+            margin-top: 40px;
+        }
+        
+        .acceptance-box {
+            background: #e8f5e9;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 30px 0;
+            text-align: center;
+            border: 2px solid #4caf50;
+        }
+        
+        /* Responsive */
+        @media (max-width: 992px) {
+            .terms-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .table-of-contents {
+                position: static;
+                margin-bottom: 30px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .terms-sections {
+                padding: 30px 20px;
+            }
+            
+            .header {
+                padding: 30px 0;
+            }
+            
+            .logo h1 {
+                font-size: 28px;
+            }
+            
+            .contact-info {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .contact-item {
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            .section-title {
+                font-size: 22px;
+            }
+        }
+        
+        /* Print Styles */
+        @media print {
+            .header, .table-of-contents, .contact-section, .footer {
+                display: none;
+            }
+            
+            .terms-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .terms-sections {
+                box-shadow: none;
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-headset"></i>
+                    </div>
+                    <h1>Lumivox Support Center</h1>
+                </div>
+
+                <p class="content-text" style="color: rgba(255,255,255,0.9); max-width: 700px; margin: 0 auto;">
+                    Welcome to the official Lumivox Support Center. We're here to help you with account issues, safety concerns, technical problems, and general questions.
+                </p>
+
+                <div class="last-updated">
+                    <i class="fas fa-calendar-alt"></i> Last Updated: 12-05-2026
+                </div>
+
+                <div class="agreement-notice">
+                    <p style="font-size: 18px; font-weight: 500; margin-bottom: 10px;">
+                        <i class="fas fa-life-ring" style="margin-right: 10px;"></i> Need Assistance?
+                    </p>
+                    <p style="opacity: 0.9;">
+                        Our support team is available to assist you and provide a safe and smooth experience on Lumivox.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="terms-content">
+
+            <!-- Table of Contents -->
+            <nav class="table-of-contents">
+                <h2 class="toc-title"><i class="fas fa-list"></i> Support Topics</h2>
+
+                <ul class="toc-list">
+                    <li class="toc-item"><a href="#section1" class="toc-link active">1. Account Support</a></li>
+                    <li class="toc-item"><a href="#section2" class="toc-link">2. Technical Issues</a></li>
+                    <li class="toc-item"><a href="#section3" class="toc-link">3. Safety & Reporting</a></li>
+                    <li class="toc-item"><a href="#section4" class="toc-link">4. Subscription Help</a></li>
+                    <li class="toc-item"><a href="#section5" class="toc-link">5. Privacy Assistance</a></li>
+                    <li class="toc-item"><a href="#section6" class="toc-link">6. Community Guidelines</a></li>
+                    <li class="toc-item"><a href="#section7" class="toc-link">7. Contact Support</a></li>
+                </ul>
+            </nav>
+
+            <!-- Support Sections -->
+            <div class="terms-sections">
+
+                <!-- Welcome Box -->
+                <div class="acceptance-box">
+                    <h3 style="color: #2e7d32; margin-bottom: 15px; font-size: 22px;">
+                        <i class="fas fa-heart" style="margin-right: 10px;"></i> Welcome to Lumivox Support
+                    </h3>
+
+                    <p style="font-size: 17px; margin-bottom: 15px;">
+                        We are committed to providing a secure, enjoyable, and reliable dating experience for all Lumivox users.
+                    </p>
+
+                    <p style="font-size: 16px; color: #555;">
+                        Browse the support topics below or contact our support team directly for assistance.
+                    </p>
+                </div>
+
+                <!-- Section 1 -->
+                <section id="section1" class="terms-section">
+                    <h2 class="section-title">
+                        <i class="fas fa-user-circle"></i> 1. Account Support
+                    </h2>
+
+                    <p class="content-text">
+                        If you're having trouble accessing your account, updating your profile, or managing your account settings, our support team can help.
+                    </p>
+
+                    <ul class="content-list">
+                        <li>Password reset assistance</li>
+                        <li>Login and verification issues</li>
+                        <li>Account recovery support</li>
+                        <li>Profile editing guidance</li>
+                        <li>Account deletion requests</li>
+                    </ul>
+                </section>
+
+                <!-- Section 2 -->
+                <section id="section2" class="terms-section">
+                    <h2 class="section-title">
+                        <i class="fas fa-tools"></i> 2. Technical Issues
+                    </h2>
+
+                    <p class="content-text">
+                        Experiencing bugs, crashes, loading issues, or app performance problems? Please contact us with detailed information about the issue.
+                    </p>
+
+                    <div class="highlight-box">
+                        <p class="content-text">
+                            <i class="fas fa-lightbulb" style="color: var(--primary); margin-right: 8px;"></i>
+                            For faster assistance, include your device model, app version, and screenshots if possible.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- Section 3 -->
+                <section id="section3" class="terms-section">
+                    <h2 class="section-title">
+                        <i class="fas fa-shield-alt"></i> 3. Safety & Reporting
+                    </h2>
+
+                    <p class="content-text">
+                        Your safety is important to us. If you encounter fake profiles, harassment, scams, abusive behavior, or inappropriate content, please report it immediately.
+                    </p>
+
+                    <ul class="content-list">
+                        <li>Report fake or suspicious accounts</li>
+                        <li>Report abusive or harmful behavior</li>
+                        <li>Block unwanted users</li>
+                        <li>Report inappropriate messages or content</li>
+                    </ul>
+
+                    <div class="warning-box">
+                        <p>
+                            <i class="fas fa-exclamation-triangle" style="color: #ff4757;"></i>
+                            <span>
+                                Our moderation team reviews all reports seriously to help maintain a safe community.
+                            </span>
+                        </p>
+                    </div>
+                </section>
+
+                <!-- Section 4 -->
+                <section id="section4" class="terms-section">
+                    <h2 class="section-title">
+                        <i class="fas fa-credit-card"></i> 4. Subscription Help
+                    </h2>
+
+                    <p class="content-text">
+                        Need help with premium features, billing, subscriptions, or payment-related concerns? We are here to assist you.
+                    </p>
+
+                    <ul class="content-list">
+                        <li>Subscription activation issues</li>
+                        <li>Payment failures</li>
+                        <li>Premium feature assistance</li>
+                        <li>Billing-related questions</li>
+                    </ul>
+                </section>
+
+                <!-- Section 5 -->
+                <section id="section5" class="terms-section">
+                    <h2 class="section-title">
+                        <i class="fas fa-user-lock"></i> 5. Privacy Assistance
+                    </h2>
+
+                    <p class="content-text">
+                        Lumivox values your privacy and data protection. Contact us if you have questions regarding your personal information or account privacy settings.
+                    </p>
+
+                    <div class="legal-note">
+                        <p class="content-text">
+                            <i class="fas fa-info-circle" style="color: #4d7cfe; margin-right: 8px;"></i>
+                            We take appropriate security measures to help protect your data and privacy.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- Section 6 -->
+                <section id="section6" class="terms-section">
+                    <h2 class="section-title">
+                        <i class="fas fa-users"></i> 6. Community Guidelines
+                    </h2>
+
+                    <p class="content-text">
+                        To ensure a positive experience for everyone, all users must follow the Lumivox community standards.
+                    </p>
+
+                    <ul class="content-list">
+                        <li>Be respectful and kind to other users</li>
+                        <li>Avoid abusive or harmful language</li>
+                        <li>Do not share misleading or fake information</li>
+                        <li>Respect personal boundaries and privacy</li>
+                    </ul>
+                </section>
+
+                <!-- Section 7 -->
+                <section id="section7" class="terms-section">
+                    <h2 class="section-title">
+                        <i class="fas fa-envelope-open-text"></i> 7. Contact Support
+                    </h2>
+
+                    <p class="content-text">
+                        If you need assistance, you can reach the Lumivox support team through the contact information below.
+                    </p>
+
+                    <div class="contact-info" style="margin-top: 30px;">
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+
+                            <div>
+                                <h3 style="margin-bottom: 5px;">Support Email</h3>
+                                <p class="contact-text">lumivoxdatingapp@gmail.com</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="highlight-box" style="margin-top: 25px;">
+                        <p class="content-text">
+                            <i class="fas fa-clock" style="color: var(--primary); margin-right: 8px;"></i>
+                            Our team usually responds within 24–48 business hours.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- Contact Section -->
+                <div class="contact-section">
+                    <h2 class="contact-title">We're Here to Help</h2>
+
+                    <p style="font-size: 18px; max-width: 700px; margin: 0 auto 20px; opacity: 0.9;">
+                        Thank you for being part of the Lumivox community. Your safety, privacy, and experience matter to us.
+                    </p>
+
+                    <div class="contact-info">
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+
+                            <div>
+                                <h3 style="margin-bottom: 5px;">Email Support</h3>
+                                <p class="contact-text">lumivoxdatingapp@gmail.com</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="container">
+                <p>© 2026 Lumivox. All rights reserved.</p>
+
+                <p style="margin-top: 10px;">
+                    Lumivox Support Center • Updated on May 12, 2026
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Smooth scrolling for TOC links
+        document.querySelectorAll('.toc-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                document.querySelectorAll('.toc-link').forEach(item => {
+                    item.classList.remove('active');
+                });
+
+                this.classList.add('active');
+
+                const targetId = this.getAttribute('href');
+                const targetSection = document.querySelector(targetId);
+
+                if (targetSection) {
+                    window.scrollTo({
+                        top: targetSection.offsetTop - 30,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        // Active TOC highlight on scroll
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('.terms-section');
+            const scrollPos = window.scrollY + 100;
+
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                const sectionId = section.getAttribute('id');
+
+                if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+                    document.querySelectorAll('.toc-link').forEach(link => {
+                        link.classList.remove('active');
+
+                        if (link.getAttribute('href') === `#${sectionId}`) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        });
+
+        // Floating Support Button
+        const supportButton = document.createElement('button');
+
+        supportButton.innerHTML = '<i class="fas fa-headset"></i> Contact Support';
+
+        supportButton.style.cssText = `
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
+            box-shadow: 0 4px 15px rgba(230, 57, 155, 0.3);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        `;
+
+        supportButton.addEventListener('mouseover', function() {
+            this.style.transform = 'translateY(-3px)';
+            this.style.boxShadow = '0 6px 20px rgba(230, 57, 155, 0.4)';
+        });
+
+        supportButton.addEventListener('mouseout', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '0 4px 15px rgba(230, 57, 155, 0.3)';
+        });
+
+        supportButton.addEventListener('click', function() {
+            window.location.href = 'mailto:lumivoxdatingapp@gmail.com';
+        });
+
+        document.body.appendChild(supportButton);
+
+        // Initialize active link
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelector('.toc-link').classList.add('active');
+        });
+    </script>
+</body>
+</html>

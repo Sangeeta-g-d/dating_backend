@@ -286,3 +286,6 @@ def terms(request):
 
 def child_safety(request):
     return render(request, 'child-safety.html')
+
+def support(request):
+    return render(request, 'support.html')

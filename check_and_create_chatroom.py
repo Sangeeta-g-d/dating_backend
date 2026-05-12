@@ -1,15 +1,7 @@
-#!/usr/bin/env python
 """
 Django shell script to check and create missing ChatRooms for matched users.
 Run with: python manage.py shell < check_and_create_chatroom.py
 """
-
-import os
-import django
-
-# Setup Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dating_backend.settings')
-django.setup()
 
 from auth_api.models import CustomUser
 from chat.models import ChatRoom
@@ -91,22 +83,19 @@ def fix_all_matches_without_chatrooms():
     print(f"Missing ChatRooms: {missing_count}")
     print(f"Created ChatRooms: {created_count}")
 
-# Main execution
-if __name__ == "__main__":
-    print("=== CHATROOM CHECKER & CREATOR ===\n")
-    
-    # Check specific users 13 and 567
-    print("Checking for users 13 and 567...\n")
-    chatroom = check_chatroom(13, 567)
-    
-    if not chatroom:
-        print("\nAttempting to create ChatRoom...\n")
-        chatroom = create_chatroom(13, 567)
-    
-    # Optionally fix all matches
-    print("\n" + "="*50)
-    response = input("\nWould you like to check and fix ALL matches? (yes/no): ").strip().lower()
-    if response in ['yes', 'y']:
-        fix_all_matches_without_chatrooms()
-    
-    print("\n✓ Done!")
+# Execute immediately when script is loaded into Django shell
+print("\n=== CHATROOM CHECKER & CREATOR ===\n")
+
+print("Checking for users 13 and 567...\n")
+chatroom = check_chatroom(13, 567)
+
+if not chatroom:
+    print("\nAttempting to create ChatRoom...\n")
+    chatroom = create_chatroom(13, 567)
+
+# Fix all matches
+print("\n" + "="*50)
+print("\nFixing ALL matches without ChatRooms...\n")
+fix_all_matches_without_chatrooms()
+
+print("\n✓ Done!")
