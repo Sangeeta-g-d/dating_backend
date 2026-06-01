@@ -15,6 +15,7 @@ urlpatterns = [
 
     path('user_list/',views.user_list,name="user_list"),
     path('user/<int:user_id>/', views.user_detail, name='user_detail'),
+    path('delete-user/<int:user_id>/', views.delete_user, name='delete_user'),
     path('matches/',views.matches,name="matches"),
     path('chat_background/',views.chat_background,name="chat_background"),
 

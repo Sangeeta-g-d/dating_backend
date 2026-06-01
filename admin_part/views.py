@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden
 from .models import *
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -228,6 +228,16 @@ def user_detail(request, user_id):
         'subscription': subscription,
         'subscription_remaining_days': subscription_remaining_days,
     })
+
+@require_http_methods(["POST"])
+def delete_user(request, user_id):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return HttpResponseForbidden("Not authorized")
+
+    user_obj = get_object_or_404(CustomUser, id=user_id, is_superuser=False)
+    user_obj.delete()
+    messages.success(request, "User deleted successfully.")
+    return redirect('user_list')
 
 
 def logout_view(request):
