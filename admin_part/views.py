@@ -7,12 +7,50 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.db.models import Q
+from django.utils import timezone
 from auth_api.models import CustomUser
 from swipe_feature.models import Match
+from feed.models import Post, Comment, Like
+from story.models import StoryModel, StoryView
+from chat.models import ChatRoom, Message
+from ask_me_feature.models import Question, Answer
 # Create your views here.
 
 def admin_dashboard(request):
-    return render(request,'admin_dashboard.html')
+    all_users = CustomUser.objects.exclude(is_superuser=True)
+    total_users = all_users.count()
+    blocked_users = all_users.filter(is_blocked=True).count()
+    active_users = all_users.filter(is_active=True, is_blocked=False).count()
+    total_profiles = all_users.filter(profile__isnull=False).count()
+    total_matches = Match.objects.count()
+    total_posts = Post.objects.count()
+    total_comments = Comment.objects.count()
+    total_likes = Like.objects.count()
+    total_stories = StoryModel.objects.count()
+    active_stories = StoryModel.objects.filter(expires_at__gt=timezone.now()).count()
+    total_story_views = StoryView.objects.count()
+    total_chat_rooms = ChatRoom.objects.count()
+    total_messages = Message.objects.count()
+    total_questions = Question.objects.count()
+    total_answers = Answer.objects.count()
+
+    return render(request, 'admin_dashboard.html', {
+        'total_users': total_users,
+        'blocked_users': blocked_users,
+        'active_users': active_users,
+        'total_profiles': total_profiles,
+        'total_matches': total_matches,
+        'total_posts': total_posts,
+        'total_comments': total_comments,
+        'total_likes': total_likes,
+        'total_stories': total_stories,
+        'active_stories': active_stories,
+        'total_story_views': total_story_views,
+        'total_chat_rooms': total_chat_rooms,
+        'total_messages': total_messages,
+        'total_questions': total_questions,
+        'total_answers': total_answers,
+    })
 
 def admin_login(request):
     if request.user.is_authenticated:
