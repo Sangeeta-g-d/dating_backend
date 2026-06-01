@@ -36,9 +36,9 @@ class SwipeUsersAPIView(APIView):
         meet_preference = user_profile.would_like_to_meet
         user_interests = user_profile.interests.all()
 
-        # Filter base users (exclude self)
+        # Filter base users (exclude self and blocked/inactive users)
         already_swiped_ids = Swipe.objects.filter(from_user=user).values_list('to_user_id', flat=True)
-        users_qs = User.objects.exclude(id__in=already_swiped_ids).exclude(id=user.id)
+        users_qs = User.objects.exclude(id__in=already_swiped_ids).exclude(id=user.id).filter(is_active=True, is_blocked=False)
 
         # --- GENDER FILTER ---
         if meet_preference != "everyone":
